@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>GAE-3007 — TP Chapitre 7 : Géostatistique et bilan hydro-salin</title>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+:root{--ulbleu:#003e71;--ulrouge:#961428;--ulor:#d59200;--bg:#f6f7fb;--fg:#1a1a1a;--code:#f3f1ec}
+*{box-sizing:border-box}body{margin:0;font-family:"Segoe UI",system-ui,Arial,sans-serif;background:var(--bg);color:var(--fg);line-height:1.55}
+header{background:linear-gradient(135deg,var(--ulbleu),#00549b);color:#fff;padding:28px 40px;border-bottom:4px solid var(--ulor)}
+header h1{margin:0 0 6px 0;font-size:1.7em}header .sub{opacity:.9;font-size:1.05em}header .meta{margin-top:10px;font-size:.95em;opacity:.85}
+main{max-width:980px;margin:30px auto;padding:0 24px}h2{color:var(--ulbleu);border-bottom:2px solid var(--ulor);padding-bottom:4px;margin-top:36px}h3{color:var(--ulrouge);margin-top:26px}
+.box{background:#fff;border-left:4px solid var(--ulbleu);border-radius:6px;padding:14px 18px;margin:14px 0;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.box.objectifs{border-left-color:#006642}.box.pre{border-left-color:var(--ulor)}.box.context{border-left-color:#00549b;background:#eef4fa}.box.note{border-left-color:var(--ulrouge);background:#faeceb}
+pre{background:var(--code);padding:14px 16px;border-radius:6px;overflow-x:auto;border:1px solid #e2ddcf;font-size:.93em}code{font-family:"Fira Code",Consolas,monospace}
+p code,li code{background:var(--code);padding:2px 5px;border-radius:3px}table{border-collapse:collapse;margin:12px 0;width:100%}th,td{border:1px solid #d0d4dc;padding:6px 10px;text-align:left}th{background:var(--ulbleu);color:#fff}tr:nth-child(even){background:#f0f3f8}
+details.solution{background:#fffbe7;border:1px solid #e8c94a;border-radius:6px;margin:14px 0;padding:0}
+details.solution>summary{cursor:pointer;padding:10px 14px;background:#fef0b8;border-radius:6px 6px 0 0;font-weight:bold;color:#6b4a00;list-style:none}
+details.solution>summary::-webkit-details-marker{display:none}
+details.solution>summary::before{content:"▶ ";color:#a07800}details.solution[open]>summary::before{content:"▼ "}
+details.solution[open]>summary{border-bottom:1px solid #e8c94a}details.solution .content{padding:12px 16px}
+.exercice{background:#fff;border-radius:6px;padding:16px 20px;margin:20px 0;border:1px solid #d8dce3;box-shadow:0 1px 3px rgba(0,0,0,.04)}.exercice h3{margin-top:0}
+.badge{display:inline-block;background:var(--ulor);color:#fff;padding:2px 8px;border-radius:10px;font-size:.78em;margin-left:8px;vertical-align:middle}.badge.time{background:#006642}
+.toolbar{text-align:right;margin:10px 0}.toolbar button{background:var(--ulbleu);color:#fff;border:none;padding:8px 14px;border-radius:4px;cursor:pointer;font-size:.92em}.toolbar button:hover{background:#00549b}
+footer{text-align:center;padding:24px;color:#666;font-size:.9em}
+</style>
+</head>
+<body>
+<header>
+  <h1>TP 7 — Géostatistique et bilan hydro-salin</h1>
+  <div class="sub">GAE-3007 · Drainage · Chapitre 7 : Log-normalité de K, variogramme, krigeage, bilan sel (ISAWIP)</div>
+  <div class="meta">Université Laval · Prof. Silvio J. Gumiere · Durée : 1 h · Environnement : R</div>
+</header>
+
+<main>
+
+<div class="toolbar">
+  <button onclick="document.querySelectorAll('details.solution').forEach(d=>d.open=true)">Afficher toutes les solutions</button>
+  <button onclick="document.querySelectorAll('details.solution').forEach(d=>d.open=false)">Masquer toutes les solutions</button>
+</div>
+
+<div class="box objectifs">
+<strong>Objectifs pédagogiques</strong>
+<ul>
+  <li>Tester la <b>log-normalité</b> d'un jeu de mesures de \(K\) et calculer les moyennes arithmétique, géométrique et harmonique.</li>
+  <li>Construire un <b>variogramme expérimental</b> et ajuster un modèle (sphérique, exponentiel).</li>
+  <li>Réaliser un <b>krigeage ordinaire</b> et cartographier la carte d'écartement \(L(x,y)\).</li>
+  <li>Établir un <b>bilan hydrique et salin</b> (leaching fraction, sel exporté) pour un projet type ISAWIP.</li>
+  <li>Évaluer la fraction de lessivage nécessaire pour maintenir la salinité racinaire sous un seuil critique.</li>
+</ul>
+</div>
+
+<div class="box pre">
+<strong>Prérequis R</strong>
+<pre><code>library(tidyverse)
+library(gstat)
+library(sf)</code></pre>
+</div>
+
+<div class="box context">
+<strong>Équations clés</strong>
+<p><b>Log-normalité</b> : si \(\ln K \sim \mathcal{N}(\mu, \sigma^2)\), alors \(\bar K_{geom} = e^{\mu}\) et \(\bar K_{arith} = e^{\mu + \sigma^2/2}\).</p>
+<p><b>Variogramme expérimental</b> :</p>
+\[
+\gamma(h) = \frac{1}{2\,N(h)}\sum_{i=1}^{N(h)} [Z(x_i) - Z(x_i+h)]^2
+\]
+<p><b>Modèle sphérique</b> :</p>
+\[
+\gamma(h) = c_0 + c\left[\tfrac{3h}{2a} - \tfrac{1}{2}\left(\tfrac{h}{a}\right)^3\right] \text{ si } h \le a
+\]
+<p><b>Bilan salin (steady state)</b> :</p>
+\[
+EC_{drain} = \frac{EC_{irr}}{LF}, \qquad LF = \frac{V_{drain}}{V_{irr}+V_{pluie}}
+\]
+<p><b>Leaching requirement</b> (Rhoades) : \(LF_{req} = \dfrac{EC_{irr}}{5\cdot EC_{seuil} - EC_{irr}}\).</p>
+</div>
+
+<!-- EX 1 -->
+<div class="exercice">
+<h3>Exercice 1 — Log-normalité de K et moyennes effectives <span class="badge time">12 min</span></h3>
+<p>Un jeu de 80 mesures de \(K\) (m/j) provient d'un projet ISAWIP en Égypte.</p>
+<pre><code>set.seed(1)
+K_obs &lt;- exp(rnorm(80, mean = log(0.6), sd = 0.9))   # m/j</code></pre>
+<ol>
+  <li>Tracez l'histogramme de \(K\) et de \(\ln K\). Réalisez un test de Shapiro sur \(\ln K\).</li>
+  <li>Calculez \(\bar K_{arith}\), \(\bar K_{geom}\), \(\bar K_{harm}\) et les reliez \(\sigma_{\ln K}\).</li>
+  <li>Laquelle est pertinente pour : (a) un écoulement parallèle horizontal ; (b) en série vertical ; (c) la moyenne spatiale d'une variable log-normale ?</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>set.seed(1)
+K_obs <- exp(rnorm(80, mean = log(0.6), sd = 0.9))
+
+# stats
+K_arith <- mean(K_obs)
+K_geom  <- exp(mean(log(K_obs)))
+K_harm  <- 1 / mean(1/K_obs)
+sig_ln  <- sd(log(K_obs))
+
+cat(sprintf("arith = %.3f | geom = %.3f | harm = %.3f | σ_lnK = %.2f\n",
+            K_arith, K_geom, K_harm, sig_ln))
+
+shapiro.test(log(K_obs))        # test log-normalité
+
+# relation théorique : arith = geom * exp(σ²/2)
+cat("geom * exp(σ²/2) =", K_geom * exp(sig_ln^2/2), "≈ arith\n")
+
+par(mfrow = c(1,2))
+hist(K_obs, main = "K (m/j)", xlab = "K")
+hist(log(K_obs), main = "ln K", xlab = "ln K")
+</code></pre>
+<p><b>Ordre attendu :</b> \(\bar K_{arith} > \bar K_{geom} > \bar K_{harm}\) ; le test Shapiro sur \(\ln K\) ne rejette pas \(H_0\) (log-normalité admise).</p>
+<p>(a) écoulement parallèle → arithmétique ; (b) série vertical → harmonique ; (c) moyenne spatiale log-normale → <b>géométrique</b> (c'est celle à utiliser pour les équations de drainage type Hooghoudt).</p>
+</div>
+</details>
+</div>
+
+<!-- EX 2 -->
+<div class="exercice">
+<h3>Exercice 2 — Variogramme expérimental et modèle sphérique <span class="badge time">15 min</span></h3>
+<p>On dispose de 60 mesures de \(\ln K\) avec coordonnées (x, y) en m.</p>
+<pre><code>set.seed(7)
+n   &lt;- 60
+pts &lt;- tibble(x = runif(n, 0, 500),
+              y = runif(n, 0, 500))
+# tendance spatiale légère + variabilité log-normale
+pts &lt;- pts |&gt;
+  mutate(lnK = 0.002*x - 0.003*y + rnorm(n, 0, 0.9))</code></pre>
+<ol>
+  <li>Convertissez en objet <code>sf</code> et construisez le variogramme expérimental (<code>gstat::variogram</code>).</li>
+  <li>Ajustez un modèle sphérique (<code>fit.variogram</code>).</li>
+  <li>Interprétez les paramètres : pépite \(c_0\), seuil \(c_0 + c\), portée \(a\).</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>library(sf); library(gstat)
+set.seed(7)
+n <- 60
+pts <- tibble(x = runif(n, 0, 500),
+              y = runif(n, 0, 500)) |>
+  mutate(lnK = 0.002*x - 0.003*y + rnorm(n, 0, 0.9)) |>
+  st_as_sf(coords = c("x","y"))
+
+vgm_exp <- variogram(lnK ~ 1, pts)
+vgm_fit <- fit.variogram(vgm_exp, model = vgm(psill = 0.7,
+                                              model  = "Sph",
+                                              range  = 200,
+                                              nugget = 0.2))
+print(vgm_fit)
+
+plot(vgm_exp, vgm_fit)
+</code></pre>
+<p><b>Interprétation :</b></p>
+<ul>
+  <li><b>Pépite</b> \(c_0\) : variance aux très courtes distances — erreurs de mesure + micro-variabilité.</li>
+  <li><b>Portée</b> \(a\) : distance au-delà de laquelle les points sont spatialement indépendants (\(\approx 200\) m ici).</li>
+  <li><b>Seuil</b> \(c_0+c\) : variance totale du champ (doit \(\approx \sigma^2_{\ln K}\)).</li>
+</ul>
+<p>Si \(a < \) largeur du champ, un design unique par parcelle est acceptable ; sinon, il faut une cartographie + écartements variables.</p>
+</div>
+</details>
+</div>
+
+<!-- EX 3 -->
+<div class="exercice">
+<h3>Exercice 3 — Krigeage et carte d'écartement L(x,y) <span class="badge time">15 min</span></h3>
+<p>À partir des \(\ln K\) de l'exercice 2, construisez une carte de \(K(x,y)\) puis \(L(x,y)\) par Hooghoudt simplifié (\(d=3\) m, \(h=0{,}3\) m, \(q=0{,}012\) m/j).</p>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code># grille régulière
+grd <- expand_grid(x = seq(0, 500, 10), y = seq(0, 500, 10)) |>
+  st_as_sf(coords = c("x","y"))
+
+krig <- krige(lnK ~ 1, pts, grd, model = vgm_fit)
+
+# transformation inverse : K = exp(lnK)
+d <- 3; h <- 0.3; q <- 0.012
+carte <- krig |>
+  mutate(K = exp(var1.pred),
+         L = sqrt((4*K*h^2 + 8*K*d*h)/q))
+
+st_coords <- st_coordinates(carte)
+carte_df <- tibble(x = st_coords[,1], y = st_coords[,2],
+                   L = carte$L)
+
+ggplot(carte_df, aes(x, y, fill = L)) +
+  geom_raster() +
+  scale_fill_viridis_c(name = "L (m)") +
+  coord_equal() +
+  labs(title = "Carte d'écartement drainé L(x,y)") + theme_minimal()
+
+# classement par zones de design
+carte_df <- carte_df |>
+  mutate(zone = cut(L, breaks = c(0, 15, 20, 25, 100),
+                    labels = c("&lt;15 m","15–20","20–25",">25")))
+table(carte_df$zone)
+</code></pre>
+<p><b>Lecture :</b> si la carte montre 2–3 zones dominantes, on conçoit 2–3 sous-parcelles avec écartements distincts (drainage « à la carte »). Cette approche peut économiser 10–25 % du linéaire total sur des champs hétérogènes.</p>
+</div>
+</details>
+</div>
+
+<!-- EX 4 -->
+<div class="exercice">
+<h3>Exercice 4 — Bilan hydrique et fraction de lessivage <span class="badge time">10 min</span></h3>
+<p>Contexte ISAWIP (Égypte) : irrigation annuelle 1400 mm, pluie 25 mm, ETc 1200 mm, \(EC_{irr}=1{,}2\) dS/m, \(EC_{seuil}\) (luzerne) = 2 dS/m.</p>
+<ol>
+  <li>Volume drainé = Irr + P − ETc. Calculez la fraction de lessivage effective \(LF = V_{drain}/(V_{irr}+V_{pluie})\).</li>
+  <li>\(EC_{drain}\) estimée à l'équilibre.</li>
+  <li>\(LF_{req}\) (Rhoades). Conclure : le drainage suffit-il à maintenir la salinité sous le seuil ?</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>Irr  <- 1400
+P    <- 25
+ETc  <- 1200
+Vdra <- Irr + P - ETc      # = 225 mm
+LF   <- Vdra / (Irr + P)
+EC_i <- 1.2
+EC_s <- 2.0
+
+EC_drain  <- EC_i / LF
+LF_req    <- EC_i / (5*EC_s - EC_i)
+
+cat(sprintf("V_drain = %.0f mm ; LF = %.2f\n", Vdra, LF))
+cat(sprintf("EC_drain = %.2f dS/m\n", EC_drain))
+cat(sprintf("LF_req (Rhoades) = %.2f\n", LF_req))
+cat(ifelse(LF >= LF_req,
+           "OK : drainage suffisant pour le lessivage.\n",
+           "Insuffisant : augmenter l'irrigation ou réduire les cultures sensibles.\n"))
+</code></pre>
+<p><b>Résultats :</b> \(V_{drain}=225\) mm, \(LF\approx 0{,}16\), \(EC_{drain}\approx 7{,}5\) dS/m (nappe très salée — exportée par drains), \(LF_{req}\approx 0{,}14\). Comme \(LF > LF_{req}\) : <b>le drainage assure l'objectif</b> (avec marge faible). Toute baisse de l'irrigation rendrait le bilan salin défavorable.</p>
+</div>
+</details>
+</div>
+
+<!-- EX 5 -->
+<div class="exercice">
+<h3>Exercice 5 — Export de sel annuel et scénarios CC <span class="badge time">10 min</span></h3>
+<p>Prolongez le bilan sur 3 scénarios climat : base, CC+1 (ETc +10 %, pluie −10 %), CC+2 (ETc +20 %, pluie −20 %).</p>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code># 1 dS/m ≈ 0.64 g/L de sels totaux
+f_EC_TDS <- 0.64
+
+scen <- tibble(
+  scenario = c("base","CC+1","CC+2"),
+  Irr      = c(1400, 1400, 1400),
+  P        = c(25,   22.5, 20),
+  ETc      = c(1200, 1320, 1440)
+) |>
+  mutate(Vdra_mm  = Irr + P - ETc,
+         LF       = Vdra_mm/(Irr+P),
+         EC_drain = 1.2/LF,
+         Sel_kg_ha = Vdra_mm * 10 * EC_drain * f_EC_TDS,   # kg/ha/an
+         LF_req   = 1.2/(5*2 - 1.2),
+         OK       = LF >= LF_req)
+
+print(scen, digits = 3)
+
+ggplot(scen, aes(scenario, Sel_kg_ha, fill = OK)) +
+  geom_col() +
+  geom_hline(yintercept = 0) +
+  labs(y = "Sel exporté (kg/ha·an)", x = NULL,
+       title = "Export de sel par drainage selon scénarios CC") +
+  theme_minimal()
+</code></pre>
+<table>
+<tr><th>Scénario</th><th>V<sub>drain</sub> (mm)</th><th>LF</th><th>EC<sub>drain</sub> (dS/m)</th><th>Sel (kg/ha·an)</th><th>LF ≥ LF<sub>req</sub> ?</th></tr>
+<tr><td>base</td><td>225</td><td>0,158</td><td>7,60</td><td>10 944</td><td>oui</td></tr>
+<tr><td>CC+1</td><td>102,5</td><td>0,072</td><td>16,6</td><td>10 901</td><td>non</td></tr>
+<tr><td>CC+2</td><td>−20</td><td>—</td><td>—</td><td>—</td><td>non</td></tr>
+</table>
+<p><b>Conclusion :</b> dès CC+1, le drainage devient insuffisant : la salinité de la zone racinaire dépasse le seuil. Il faudrait alors <b>augmenter l'irrigation</b>, changer de culture (plus tolérante) ou installer un <b>sub-drainage + re-circulation</b>. Ce type d'analyse justifie l'approche ISAWIP fondée sur un bilan hydro-salin couplé.</p>
+</div>
+</details>
+</div>
+
+<h2>Questions de synthèse</h2>
+<ol>
+  <li>Pourquoi la moyenne géométrique est-elle la statistique recommandée pour \(K\) dans les équations de drainage ?</li>
+  <li>Quand est-il pertinent de passer du « design moyen » au « design cartographié » (coût du krigeage vs gain de précision) ?</li>
+  <li>Dans quelles conditions la formule de Rhoades pour \(LF_{req}\) est-elle valide (hypothèses de mélange, régime permanent, unilingue) ?</li>
+  <li>Comment coupler un modèle comme DRAINMOD à une simulation géostatistique pour quantifier l'incertitude sur le bilan hydrique ?</li>
+</ol>
+
+<div class="box note">
+<strong>Livrable</strong> — Rapport RMarkdown HTML : (1) tests de log-normalité + moyennes effectives, (2) variogramme + modèle, (3) carte L(x,y) + zonage, (4) bilan hydro-salin base et CC, (5) recommandation d'ingénierie (suffisance du drainage, alternatives en cas CC).
+</div>
+
+<footer>
+GAE-3007 Drainage · Université Laval · Prof. Silvio J. Gumiere · TP Chapitre 7
+</footer>
+
+</main>
+</body>
+</html>

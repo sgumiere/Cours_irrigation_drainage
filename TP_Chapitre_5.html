@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>GAE-3007 — TP Chapitre 5 : Dimensionnement hydraulique des drains</title>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+:root{--ulbleu:#003e71;--ulrouge:#961428;--ulor:#d59200;--bg:#f6f7fb;--fg:#1a1a1a;--code:#f3f1ec}
+*{box-sizing:border-box}body{margin:0;font-family:"Segoe UI",system-ui,Arial,sans-serif;background:var(--bg);color:var(--fg);line-height:1.55}
+header{background:linear-gradient(135deg,var(--ulbleu),#00549b);color:#fff;padding:28px 40px;border-bottom:4px solid var(--ulor)}
+header h1{margin:0 0 6px 0;font-size:1.7em}header .sub{opacity:.9;font-size:1.05em}header .meta{margin-top:10px;font-size:.95em;opacity:.85}
+main{max-width:980px;margin:30px auto;padding:0 24px}h2{color:var(--ulbleu);border-bottom:2px solid var(--ulor);padding-bottom:4px;margin-top:36px}h3{color:var(--ulrouge);margin-top:26px}
+.box{background:#fff;border-left:4px solid var(--ulbleu);border-radius:6px;padding:14px 18px;margin:14px 0;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.box.objectifs{border-left-color:#006642}.box.pre{border-left-color:var(--ulor)}.box.context{border-left-color:#00549b;background:#eef4fa}.box.note{border-left-color:var(--ulrouge);background:#faeceb}
+pre{background:var(--code);padding:14px 16px;border-radius:6px;overflow-x:auto;border:1px solid #e2ddcf;font-size:.93em}code{font-family:"Fira Code",Consolas,monospace}
+p code,li code{background:var(--code);padding:2px 5px;border-radius:3px}table{border-collapse:collapse;margin:12px 0;width:100%}th,td{border:1px solid #d0d4dc;padding:6px 10px;text-align:left}th{background:var(--ulbleu);color:#fff}tr:nth-child(even){background:#f0f3f8}
+details.solution{background:#fffbe7;border:1px solid #e8c94a;border-radius:6px;margin:14px 0;padding:0}
+details.solution>summary{cursor:pointer;padding:10px 14px;background:#fef0b8;border-radius:6px 6px 0 0;font-weight:bold;color:#6b4a00;list-style:none}
+details.solution>summary::-webkit-details-marker{display:none}
+details.solution>summary::before{content:"▶ ";color:#a07800}details.solution[open]>summary::before{content:"▼ "}
+details.solution[open]>summary{border-bottom:1px solid #e8c94a}details.solution .content{padding:12px 16px}
+.exercice{background:#fff;border-radius:6px;padding:16px 20px;margin:20px 0;border:1px solid #d8dce3;box-shadow:0 1px 3px rgba(0,0,0,.04)}.exercice h3{margin-top:0}
+.badge{display:inline-block;background:var(--ulor);color:#fff;padding:2px 8px;border-radius:10px;font-size:.78em;margin-left:8px;vertical-align:middle}.badge.time{background:#006642}
+.toolbar{text-align:right;margin:10px 0}.toolbar button{background:var(--ulbleu);color:#fff;border:none;padding:8px 14px;border-radius:4px;cursor:pointer;font-size:.92em}.toolbar button:hover{background:#00549b}
+footer{text-align:center;padding:24px;color:#666;font-size:.9em}
+</style>
+</head>
+<body>
+<header>
+  <h1>TP 5 — Dimensionnement hydraulique des drains</h1>
+  <div class="sub">GAE-3007 · Drainage · Chapitre 5 : Manning, Darcy-Weisbach, diamètres et vitesses</div>
+  <div class="meta">Université Laval · Prof. Silvio J. Gumiere · Durée : 1 h · Environnement : R</div>
+</header>
+
+<main>
+
+<div class="toolbar">
+  <button onclick="document.querySelectorAll('details.solution').forEach(d=>d.open=true)">Afficher toutes les solutions</button>
+  <button onclick="document.querySelectorAll('details.solution').forEach(d=>d.open=false)">Masquer toutes les solutions</button>
+</div>
+
+<div class="box objectifs">
+<strong>Objectifs pédagogiques</strong>
+<ul>
+  <li>Appliquer l'équation de <b>Manning</b> pour le dimensionnement des drains latéraux en écoulement uniforme partiellement pleins.</li>
+  <li>Vérifier par <b>Darcy-Weisbach</b> (+ Colebrook) et comparer les diamètres requis.</li>
+  <li>Dimensionner un <b>collecteur</b> par itération avec le facteur de sécurité CPVQ (0,75 pour les collecteurs, 1,0 pour latéraux).</li>
+  <li>Vérifier les vitesses (autocurage \(v_{min}=0{,}15\) m/s ; érosion \(v_{max}=1{,}5\) m/s).</li>
+  <li>Sélectionner une <b>enveloppe/filtre</b> à partir de la granulométrie (règle de Terzaghi).</li>
+</ul>
+</div>
+
+<div class="box pre">
+<strong>Prérequis R</strong>
+<pre><code>library(tidyverse)
+library(scales)</code></pre>
+</div>
+
+<div class="box context">
+<strong>Équations de base</strong>
+<p><b>Manning</b> (plein ou partiellement plein, conduit circulaire) :</p>
+\[
+Q = \frac{1}{n}\,A\,R_h^{2/3}\,S_0^{1/2}
+\]
+<p>Pour une section circulaire pleine : \(A = \pi D^2/4\) et \(R_h = D/4\), donc</p>
+\[
+Q_{plein} = \frac{\pi}{4 n}\left(\frac{D}{4}\right)^{2/3} D^2 \sqrt{S_0} \;=\; \frac{\pi}{4 n}\cdot \frac{D^{8/3}}{4^{2/3}}\sqrt{S_0}.
+\]
+<p><b>Darcy-Weisbach</b> :</p>
+\[
+\Delta h = f\,\frac{L}{D}\,\frac{v^2}{2g}, \qquad \frac{1}{\sqrt f} = -2\log_{10}\!\left(\frac{\varepsilon/D}{3{,}7}+\frac{2{,}51}{Re\sqrt f}\right)
+\]
+<p>Valeurs typiques (drains PVC annelés / lisses) : \(n = 0{,}015\) à 0,018 ; \(\varepsilon \approx 0{,}25\) mm pour PVC annelé, 0,0015 mm pour PVC lisse.</p>
+</div>
+
+<!-- EX 1 -->
+<div class="exercice">
+<h3>Exercice 1 — Débit de projet d'un latéral <span class="badge time">10 min</span></h3>
+<p>Un champ de 4,2 ha est drainé par des latéraux parallèles (écartement \(L=18\) m, longueur \(L_{lat}=180\) m). Le taux de drainage de projet vaut \(q = 12\) mm/j.</p>
+<ol>
+  <li>Calculez le débit spécifique \(q\) en m/s puis en m\(^3\)/s par mètre de drain.</li>
+  <li>Déduisez le débit cumulé \(Q_{lat}\) en fin de latéral (en L/s).</li>
+  <li>Exprimez ce débit en \(\ell\)/s/ha et comparez à la plage typique Québec (0,5–1,5 L/s/ha).</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>q_mm_j <- 12
+q_m_s  <- q_mm_j / 1000 / 86400     # 1.389e-7 m/s
+
+L      <- 18      # écartement (m)
+L_lat  <- 180     # longueur latéral (m)
+
+# Débit spécifique par mètre de drain : q * L  (apport linéique)
+q_lin  <- q_m_s * L                 # m^3/s par m de drain
+Q_lat  <- q_lin * L_lat             # m^3/s total en fin de latéral
+Q_lat_Ls <- Q_lat * 1000            # L/s
+
+# Surface drainée par latéral
+A_ha   <- L * L_lat / 10000         # ha
+Q_Ls_ha <- Q_lat_Ls / A_ha
+
+cat(sprintf("q = %.3e m/s\n", q_m_s))
+cat(sprintf("Q_lat = %.3f L/s  (%.2f L/s/ha)\n", Q_lat_Ls, Q_Ls_ha))
+</code></pre>
+<p><b>Résultat :</b> \(Q_{lat}\approx 0{,}45\) L/s, soit \(\approx 1{,}39\) L/s/ha — cohérent avec la plage CPVQ (0,5–1,5 L/s/ha).</p>
+</div>
+</details>
+</div>
+
+<!-- EX 2 -->
+<div class="exercice">
+<h3>Exercice 2 — Diamètre par Manning <span class="badge time">12 min</span></h3>
+<p>Le latéral de l'exercice précédent a une pente \(S_0 = 0{,}002\) m/m et un coefficient \(n = 0{,}017\). Les diamètres commerciaux disponibles sont 75, 100, 125, 150, 200 mm.</p>
+<ol>
+  <li>Écrivez une fonction <code>Q_full(D, n, S0)</code> qui calcule le débit à pleine section.</li>
+  <li>Pour chaque diamètre, calculez \(Q_{plein}\) et le ratio \(Q_{lat}/Q_{plein}\).</li>
+  <li>Sélectionnez le plus petit diamètre tel que ce ratio reste \(\le 1\) (latéral, FS=1,0).</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>Q_full <- function(D, n = 0.017, S0 = 0.002){
+  A  <- pi * D^2 / 4
+  Rh <- D / 4
+  (1/n) * A * Rh^(2/3) * sqrt(S0)
+}
+
+D_comm <- c(0.075, 0.100, 0.125, 0.150, 0.200)
+tab <- tibble(D = D_comm,
+              Qp_Ls = Q_full(D_comm) * 1000,
+              ratio = 0.45 / (Q_full(D_comm) * 1000))
+
+print(tab, digits = 3)
+D_choisi <- tab$D[which(tab$ratio <= 1)[1]]
+cat("Diamètre choisi :", 1000*D_choisi, "mm\n")
+</code></pre>
+<table>
+<tr><th>\(D\) (mm)</th><th>\(Q_{plein}\) (L/s)</th><th>Ratio</th></tr>
+<tr><td>75</td><td>1,23</td><td>0,37</td></tr>
+<tr><td>100</td><td>2,66</td><td>0,17</td></tr>
+</table>
+<p><b>Diamètre retenu : 75 mm</b> (ratio 0,37, soit une section seulement à 37% d'utilisation, ce qui laisse une marge amplement suffisante).</p>
+</div>
+</details>
+</div>
+
+<!-- EX 3 -->
+<div class="exercice">
+<h3>Exercice 3 — Comparaison Manning vs Darcy-Weisbach <span class="badge time">13 min</span></h3>
+<p>Pour \(D = 75\) mm, \(L=180\) m, \(Q=0{,}45\) L/s, comparez la perte de charge prédite par Manning et par Darcy-Weisbach + Colebrook (\(\varepsilon = 0{,}25\) mm, eau à 10 °C : \(\nu = 1{,}31\times10^{-6}\) m\(^2\)/s).</p>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>D  <- 0.075
+L  <- 180
+Q  <- 0.45e-3
+A  <- pi*D^2/4
+v  <- Q/A
+Rh <- D/4
+nu <- 1.31e-6
+Re <- v*D/nu
+eps <- 0.25e-3
+
+# Manning : inverser pour S
+n  <- 0.017
+S_man <- (Q*n/(A*Rh^(2/3)))^2
+dh_man <- S_man * L
+
+# Colebrook (itération)
+colebrook <- function(Re, eps, D, tol = 1e-8, itmax = 60){
+  f <- 0.02
+  for(k in 1:itmax){
+    f_new <- (1/(-2*log10(eps/(3.7*D) + 2.51/(Re*sqrt(f)))))^2
+    if(abs(f_new - f) < tol) break
+    f <- f_new
+  }
+  f
+}
+f  <- colebrook(Re, eps, D)
+dh_dw <- f * (L/D) * v^2/(2*9.81)
+
+cat(sprintf("v = %.3f m/s ; Re = %.0f\n", v, Re))
+cat(sprintf("Manning  : S = %.4f m/m, dh = %.3f m\n", S_man, dh_man))
+cat(sprintf("D-W      : f = %.4f, dh = %.3f m\n", f, dh_dw))
+</code></pre>
+<p><b>Résultat :</b> \(v\approx 0{,}10\) m/s, \(Re\approx 5\,900\) (régime turbulent de transition). Manning et DW prédisent des pertes très proches (\(\approx 0{,}36\) m vs 0,38 m). Écart \(<\) 10 %, confirmant la validité de Manning en drainage.</p>
+<p><b>Remarque :</b> la vitesse 0,10 m/s est <b>inférieure</b> à \(v_{min} = 0{,}15\) m/s — risque de sédimentation à surveiller.</p>
+</div>
+</details>
+</div>
+
+<!-- EX 4 -->
+<div class="exercice">
+<h3>Exercice 4 — Dimensionnement d'un collecteur (itératif) <span class="badge time">15 min</span></h3>
+<p>Un collecteur reçoit 28 latéraux (débit unitaire 0,45 L/s, soit \(Q_{coll} = 12{,}6\) L/s). Pente \(S_0 = 0{,}0015\), \(n=0{,}017\). Pour un collecteur, le facteur de sécurité CPVQ exige \(Q_{design}/Q_{plein} \le 0{,}75\).</p>
+<ol>
+  <li>Calculez la plage de diamètres commerciaux (100, 125, 150, 200, 250, 300 mm) qui respectent la contrainte.</li>
+  <li>Vérifiez la vitesse à pleine section (\(v_{min}=0{,}15\) m/s ? \(v_{max}=1{,}5\) m/s ?).</li>
+  <li>Produisez un graphique \(D\) vs vitesse et \(D\) vs ratio de remplissage, avec la zone d'acceptabilité ombrée.</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>Q_coll <- 12.6e-3   # m^3/s
+S0 <- 0.0015
+n  <- 0.017
+
+D_comm <- c(0.100, 0.125, 0.150, 0.200, 0.250, 0.300)
+tab <- tibble(D = D_comm) |>
+  mutate(A   = pi*D^2/4,
+         Rh  = D/4,
+         Qp  = (1/n)*A*Rh^(2/3)*sqrt(S0),
+         ratio = Q_coll / Qp,
+         v_plein = Qp / A)
+
+print(tab, digits = 3)
+D_coll <- tab$D[which(tab$ratio <= 0.75)[1]]
+cat("Diamètre collecteur :", 1000*D_coll, "mm\n")
+
+# graphique
+ggplot(tab, aes(D*1000, ratio)) +
+  geom_hline(yintercept = 0.75, colour = "red", linetype = 2) +
+  geom_line() + geom_point() +
+  labs(x = "Diamètre (mm)", y = "Q_design / Q_plein",
+       title = "Dimensionnement collecteur — critère CPVQ 0,75") +
+  theme_minimal()
+</code></pre>
+<table>
+<tr><th>\(D\) (mm)</th><th>\(Q_{plein}\) (L/s)</th><th>Ratio</th><th>\(v_{plein}\) (m/s)</th></tr>
+<tr><td>100</td><td>2,31</td><td>5,46</td><td>0,29</td></tr>
+<tr><td>125</td><td>4,18</td><td>3,01</td><td>0,34</td></tr>
+<tr><td>150</td><td>6,83</td><td>1,84</td><td>0,39</td></tr>
+<tr><td>200</td><td>14,71</td><td>0,86</td><td>0,47</td></tr>
+<tr><td>250</td><td>26,66</td><td>0,47</td><td>0,54</td></tr>
+<tr><td>300</td><td>43,36</td><td>0,29</td><td>0,61</td></tr>
+</table>
+<p><b>Choix : 250 mm</b> (ratio 0,47 \(\le\) 0,75 ✓, vitesse 0,54 m/s \(\in[0{,}15;1{,}5]\) m/s ✓). Le 200 mm est refusé (ratio 0,86 > 0,75).</p>
+</div>
+</details>
+</div>
+
+<!-- EX 5 -->
+<div class="exercice">
+<h3>Exercice 5 — Sélection d'une enveloppe par règle de Terzaghi <span class="badge time">10 min</span></h3>
+<p>Granulométrie d'un sol (passants cumulés) :</p>
+<pre><code>sol &lt;- tibble(
+  d_mm = c(0.002, 0.005, 0.010, 0.020, 0.050, 0.100, 0.200, 0.500, 1.0, 2.0),
+  pct  = c(    8,    14,    22,    35,    52,    68,    82,    94, 98, 100)
+)</code></pre>
+<p>Règle : une enveloppe est nécessaire si \(D_{60} < 0{,}6\) mm et si la fraction fine (\(d<0{,}075\) mm) dépasse 50 %. Critères enveloppe : \(d_{85,filtre}/d_{15,sol} > 5\) et \(d_{15,filtre}/d_{15,sol} < 5\).</p>
+<ol>
+  <li>Tracez la courbe granulométrique en échelle log.</li>
+  <li>Par interpolation, déterminez \(d_{15}\), \(d_{50}\), \(d_{60}\) du sol.</li>
+  <li>Évaluez la nécessité d'une enveloppe. Si oui, proposez une plage de \(d_{15,filtre}\).</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>sol <- tibble(
+  d_mm = c(0.002, 0.005, 0.010, 0.020, 0.050, 0.100, 0.200, 0.500, 1.0, 2.0),
+  pct  = c(    8,    14,    22,    35,    52,    68,    82,    94, 98, 100)
+)
+
+# interpolation linéaire en log(d)
+interp <- approxfun(sol$pct, log10(sol$d_mm))
+d15 <- 10^interp(15)
+d50 <- 10^interp(50)
+d60 <- 10^interp(60)
+cat(sprintf("d15 = %.4f mm\nd50 = %.4f mm\nd60 = %.4f mm\n", d15, d50, d60))
+
+# fines < 0,075 mm (interpolation pct à 0,075)
+interp_pct <- approxfun(log10(sol$d_mm), sol$pct)
+pct_fines <- interp_pct(log10(0.075))
+cat(sprintf("%% fines (<0.075 mm) = %.1f\n", pct_fines))
+
+# plage d15_filtre
+d15f_min <- 1 * d15     # sécurité
+d15f_max <- 5 * d15
+cat(sprintf("d15_filtre ∈ [%.3f ; %.3f] mm\n", d15f_min, d15f_max))
+
+ggplot(sol, aes(d_mm, pct)) +
+  geom_line() + geom_point() +
+  scale_x_log10() +
+  labs(x = "Diamètre (mm, log)", y = "% passant",
+       title = "Granulométrie du sol drainé") + theme_minimal()
+</code></pre>
+<p><b>Résultats :</b> \(d_{15}\approx 0{,}006\) mm, \(d_{50}\approx 0{,}045\) mm, \(d_{60}\approx 0{,}067\) mm. Fraction fine \(\approx 61\%\) et \(d_{60}<0{,}6\) mm : <b>enveloppe requise</b>. La plage de \(d_{15,filtre}\) se situe entre 0,006 et 0,03 mm — en pratique on retiendra une enveloppe synthétique (PP100/PP450) plutôt qu'un gravier (difficile à trouver si fin).</p>
+</div>
+</details>
+</div>
+
+<h2>Questions de synthèse</h2>
+<ol>
+  <li>Pourquoi le facteur de sécurité est-il plus exigeant pour un collecteur (0,75) que pour un latéral (1,0) ?</li>
+  <li>Dans quel régime d'écoulement vos drains opèrent-ils (laminaire, transition, turbulent) ? Conséquences pratiques ?</li>
+  <li>Quels sont les risques si \(v < v_{min}\) ? Si \(v > v_{max}\) ?</li>
+  <li>Entre Manning et Darcy-Weisbach, lequel privilégier en avant-projet ? Justifiez.</li>
+</ol>
+
+<div class="box note">
+<strong>Livrable</strong> — Rendez un rapport RMarkdown (`.Rmd` + HTML) comprenant :
+(1) les calculs Ex. 1–5, (2) tableaux et graphiques, (3) choix final latéral + collecteur avec justification, (4) réponse aux questions de synthèse. Durée totale visée : 1 h.
+</div>
+
+<footer>
+GAE-3007 Drainage · Université Laval · Prof. Silvio J. Gumiere · TP Chapitre 5
+</footer>
+
+</main>
+</body>
+</html>

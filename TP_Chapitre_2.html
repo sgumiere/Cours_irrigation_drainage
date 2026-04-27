@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>GAE-3007 — TP Chapitre 2 : Darcy et conductivité hydraulique</title>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+:root{--ulbleu:#003e71;--ulrouge:#961428;--ulor:#d59200;--bg:#f6f7fb;--fg:#1a1a1a;--code:#f3f1ec}
+*{box-sizing:border-box}body{margin:0;font-family:"Segoe UI",system-ui,Arial,sans-serif;background:var(--bg);color:var(--fg);line-height:1.55}
+header{background:linear-gradient(135deg,var(--ulbleu),#00549b);color:#fff;padding:28px 40px;border-bottom:4px solid var(--ulor)}
+header h1{margin:0 0 6px 0;font-size:1.7em}header .sub{opacity:.9;font-size:1.05em}header .meta{margin-top:10px;font-size:.95em;opacity:.85}
+main{max-width:980px;margin:30px auto;padding:0 24px}h2{color:var(--ulbleu);border-bottom:2px solid var(--ulor);padding-bottom:4px;margin-top:36px}
+h3{color:var(--ulrouge);margin-top:26px}
+.box{background:#fff;border-left:4px solid var(--ulbleu);border-radius:6px;padding:14px 18px;margin:14px 0;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.box.objectifs{border-left-color:#006642}.box.pre{border-left-color:var(--ulor)}.box.context{border-left-color:#00549b;background:#eef4fa}.box.note{border-left-color:var(--ulrouge);background:#faeceb}
+pre{background:var(--code);padding:14px 16px;border-radius:6px;overflow-x:auto;border:1px solid #e2ddcf;font-size:.93em}code{font-family:"Fira Code",Consolas,monospace}
+p code,li code{background:var(--code);padding:2px 5px;border-radius:3px}table{border-collapse:collapse;margin:12px 0;width:100%}th,td{border:1px solid #d0d4dc;padding:6px 10px;text-align:left}th{background:var(--ulbleu);color:#fff}tr:nth-child(even){background:#f0f3f8}
+details.solution{background:#fffbe7;border:1px solid #e8c94a;border-radius:6px;margin:14px 0;padding:0}
+details.solution>summary{cursor:pointer;padding:10px 14px;background:#fef0b8;border-radius:6px 6px 0 0;font-weight:bold;color:#6b4a00;list-style:none}
+details.solution>summary::-webkit-details-marker{display:none}
+details.solution>summary::before{content:"▶ ";color:#a07800}details.solution[open]>summary::before{content:"▼ "}
+details.solution[open]>summary{border-bottom:1px solid #e8c94a}details.solution .content{padding:12px 16px}
+.exercice{background:#fff;border-radius:6px;padding:16px 20px;margin:20px 0;border:1px solid #d8dce3;box-shadow:0 1px 3px rgba(0,0,0,.04)}.exercice h3{margin-top:0}
+.badge{display:inline-block;background:var(--ulor);color:#fff;padding:2px 8px;border-radius:10px;font-size:.78em;margin-left:8px;vertical-align:middle}.badge.time{background:#006642}
+.toolbar{text-align:right;margin:10px 0}.toolbar button{background:var(--ulbleu);color:#fff;border:none;padding:8px 14px;border-radius:4px;cursor:pointer;font-size:.92em}.toolbar button:hover{background:#00549b}
+footer{text-align:center;padding:24px;color:#666;font-size:.9em}
+</style>
+</head>
+<body>
+<header>
+  <h1>TP 2 — Loi de Darcy et conductivité hydraulique</h1>
+  <div class="sub">GAE-3007 · Drainage · Chapitre 2 : Concepts et théorie</div>
+  <div class="meta">Université Laval · Prof. Silvio J. Gumiere · Durée : 1 h · Environnement : R</div>
+</header>
+
+<main>
+
+<div class="toolbar">
+  <button onclick="document.querySelectorAll('details.solution').forEach(d=>d.open=true)">Afficher toutes les solutions</button>
+  <button onclick="document.querySelectorAll('details.solution').forEach(d=>d.open=false)">Masquer toutes les solutions</button>
+</div>
+
+<div class="box objectifs">
+<strong>Objectifs pédagogiques</strong>
+<ul>
+  <li>Appliquer la loi de Darcy à différentes géométries (colonne, gradient 2D).</li>
+  <li>Calculer la conductivité équivalente pour un sol stratifié (moyennes arithmétique et harmonique).</li>
+  <li>Corriger la conductivité pour la température via la viscosité cinématique.</li>
+  <li>Quantifier l'anisotropie \(K_h/K_v\) et ses conséquences sur le design.</li>
+</ul>
+</div>
+
+<div class="box pre">
+<strong>Prérequis R</strong>
+<pre><code>install.packages(c("tidyverse","ggplot2"))
+library(tidyverse)</code></pre>
+</div>
+
+<div class="box context">
+<strong>Rappel théorique</strong>
+<p>La loi de Darcy en 1D pour un milieu saturé :</p>
+\[
+q = -K\,\frac{\mathrm{d}h}{\mathrm{d}z} \quad\Longleftrightarrow\quad Q = K \cdot A \cdot i
+\]
+<p>Pour un sol stratifié :</p>
+\[
+K_h^{eq} = \frac{\sum_i e_i K_i}{\sum_i e_i} \;\;(\text{flux // couches}),\qquad
+K_v^{eq} = \frac{\sum_i e_i}{\sum_i e_i/K_i} \;\;(\text{flux} \perp \text{couches})
+\]
+<p>Correction de température (Hazen) : \( K(T) = K_{20}\cdot \dfrac{\mu_{20}}{\mu_T} \) où \(\mu\) est la viscosité dynamique.</p>
+</div>
+
+<h2>Contexte</h2>
+<p>Vous caractérisez un site agricole du Centre-du-Québec : un profil de sol de 3 horizons distincts est documenté, et vous disposez de mesures de conductivité saturée faites au perméamètre à charge constante en laboratoire, puis au trou à la tarière au champ.</p>
+
+<!-- EX 1 -->
+<div class="exercice">
+<h3>Exercice 1 — Loi de Darcy en colonne <span class="badge time">10 min</span></h3>
+<p>Une colonne de sable de 40 cm de long et 5 cm de diamètre est soumise à une charge hydraulique différentielle \(\Delta h = 12\) cm. On mesure \(V = 220\) mL en 30 s.</p>
+<ol>
+  <li>Calculez le débit \(Q\) en m³/s puis en m/j.</li>
+  <li>Déduisez la conductivité hydraulique \(K\) (m/j).</li>
+  <li>Vérifiez que l'écoulement est laminaire (Re &lt; 1) : \( Re = q\,d_{50}/\nu \) avec \(d_{50} = 0{,}5\) mm et \(\nu = 10^{-6}\) m²/s.</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>L  <- 0.40          # m
+D  <- 0.05          # m
+A  <- pi * D^2 / 4  # m²
+dh <- 0.12          # m
+V  <- 220e-6        # m³
+t  <- 30            # s
+
+Q <- V / t                   # m³/s
+Q_mj <- Q * 86400            # m³/j
+q <- Q / A                   # vitesse darcienne m/s
+
+i <- dh / L                  # gradient (-)
+K <- q / i                   # m/s
+K_mj <- K * 86400
+cat(sprintf("Q   = %.3e m³/s  =  %.3f m³/j\n", Q, Q_mj))
+cat(sprintf("q   = %.3e m/s\n", q))
+cat(sprintf("K   = %.3e m/s  =  %.3f m/j\n", K, K_mj))
+
+# Reynolds
+d50 <- 0.5e-3
+nu  <- 1e-6
+Re  <- q * d50 / nu
+cat(sprintf("Re  = %.3f (< 1 : Darcy applicable)\n", Re))</code></pre>
+<p>On attend typiquement \(K \approx 1\)–2 m/j pour un sable fin, Re ≪ 1 confirmant la validité de Darcy.</p>
+</div>
+</details>
+</div>
+
+<!-- EX 2 -->
+<div class="exercice">
+<h3>Exercice 2 — Profil stratifié et moyennes équivalentes <span class="badge time">15 min</span></h3>
+<p>Voici le profil pédologique :</p>
+<table>
+<tr><th>Horizon</th><th>Épaisseur (m)</th><th>K (m/j)</th><th>Texture</th></tr>
+<tr><td>Ap</td><td>0,30</td><td>1,80</td><td>loam</td></tr>
+<tr><td>Bt</td><td>0,50</td><td>0,12</td><td>argile</td></tr>
+<tr><td>C</td><td>1,20</td><td>2,50</td><td>sable loameux</td></tr>
+</table>
+<ol>
+  <li>Calculez \(K_h^{eq}\) et \(K_v^{eq}\).</li>
+  <li>Calculez le ratio d'anisotropie \(K_h/K_v\).</li>
+  <li>Quelle moyenne retenir pour : (a) dimensionner l'espacement de drains latéraux ? (b) analyser la percolation verticale ?</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>sol <- tibble(
+  horizon = c("Ap","Bt","C"),
+  e       = c(0.30, 0.50, 1.20),   # m
+  K       = c(1.80, 0.12, 2.50)    # m/j
+)
+
+Kh_eq <- with(sol, sum(e * K) / sum(e))
+Kv_eq <- with(sol, sum(e) / sum(e / K))
+
+cat(sprintf("Kh_eq = %.3f m/j  (moyenne arithmétique pondérée)\n", Kh_eq))
+cat(sprintf("Kv_eq = %.3f m/j  (moyenne harmonique pondérée)\n", Kv_eq))
+cat(sprintf("Kh/Kv = %.1f\n", Kh_eq/Kv_eq))</code></pre>
+<p><b>Interprétation :</b></p>
+<ul>
+  <li>\(K_h \approx 1{,}7\) m/j, dominé par les horizons Ap et C.</li>
+  <li>\(K_v \approx 0{,}3\) m/j, limité par la couche argileuse Bt.</li>
+  <li>Anisotropie ≈ 6 — valeur typique pour un sol loameux stratifié.</li>
+  <li><b>Espacement</b> (flux latéral) → on utilise \(K_h^{eq}\).</li>
+  <li><b>Percolation verticale</b> (recharge, lessivage) → on utilise \(K_v^{eq}\).</li>
+</ul>
+</div>
+</details>
+</div>
+
+<!-- EX 3 -->
+<div class="exercice">
+<h3>Exercice 3 — Correction de température <span class="badge time">10 min</span></h3>
+<p>Au laboratoire à 22 °C, on mesure \(K = 0{,}95\) m/j. Au champ, la température du sol est de 6 °C au printemps.</p>
+<ol>
+  <li>Implémentez la viscosité dynamique en fonction de la température (formule empirique) :
+  \[
+  \mu(T) = 2{,}414\cdot 10^{-5} \cdot 10^{247{,}8/(T+133{,}15)} \quad (\text{Pa·s})
+  \]</li>
+  <li>Corrigez \(K\) pour la température du champ.</li>
+  <li>Tracez \(K(T)\) entre 0 et 25 °C et discutez l'impact pour le drainage printanier au Québec.</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>mu <- function(T){
+  2.414e-5 * 10^(247.8/(T + 133.15))
+}
+
+K_lab <- 0.95                      # m/j @ 22 °C
+T_lab <- 22
+T_champ <- 6
+K_champ <- K_lab * mu(T_lab) / mu(T_champ)
+cat(sprintf("K(6°C)  = %.3f m/j   (vs %.2f en labo)\n", K_champ, K_lab))
+
+T_seq <- seq(0, 25, by = 1)
+K_seq <- K_lab * mu(T_lab) / mu(T_seq)
+
+library(ggplot2)
+ggplot(data.frame(T = T_seq, K = K_seq), aes(T, K)) +
+  geom_line(color = "#003e71", linewidth = 1.2) +
+  geom_hline(yintercept = K_lab, linetype = "dashed", color = "#961428") +
+  geom_vline(xintercept = 6, linetype = "dotted", color = "#006642") +
+  labs(title = "K en fonction de la température",
+       x = "Température (°C)", y = "K (m/j)") +
+  theme_minimal()</code></pre>
+<p><b>Observation :</b> à 6 °C, \(K\) est typiquement 40 % plus faible qu'à 22 °C. Conséquence : au printemps, la capacité réelle du drainage est inférieure à la capacité nominale. Il est prudent d'appliquer un facteur de sécurité de ~1,4 pour les calculs de dimensionnement.</p>
+</div>
+</details>
+</div>
+
+<!-- EX 4 -->
+<div class="exercice">
+<h3>Exercice 4 — Débit dans un réseau d'écoulement <span class="badge time">13 min</span></h3>
+<p>On utilise un réseau d'écoulement (flownet) pour estimer le débit sous un barrage agricole (largeur 30 m). Le réseau a été tracé avec 5 canaux d'écoulement et 12 chutes équipotentielles. Charge totale \(\Delta H = 4\) m, sol homogène \(K = 0{,}35\) m/j.</p>
+\[
+Q = K \cdot \Delta H \cdot \frac{N_f}{N_d} \cdot L
+\]
+<ol>
+  <li>Calculez \(Q\) (m³/j).</li>
+  <li>Estimez la vitesse darcienne moyenne si la section traversée moyenne est de 4 m².</li>
+  <li>Quelle précaution prendre si \(K\) n'est connu qu'à ±50 % ?</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>K  <- 0.35       # m/j
+dH <- 4          # m
+Nf <- 5
+Nd <- 12
+L  <- 30         # m
+
+Q <- K * dH * (Nf/Nd) * L
+cat(sprintf("Q = %.1f m³/j\n", Q))
+
+A <- 4
+q <- Q / A
+cat(sprintf("q = %.2f m/j = %.2e m/s\n", q, q/86400))
+
+# Incertitude ±50 %
+Qmin <- 0.5 * Q
+Qmax <- 1.5 * Q
+cat(sprintf("Fourchette Q : %.1f — %.1f m³/j\n", Qmin, Qmax))</code></pre>
+<p><b>Commentaire :</b> le débit est proportionnel à \(K\) ; une incertitude ±50 % sur \(K\) se propage directement sur \(Q\). Dans un contexte de barrage, on utilise une estimation haute (\(K_{max}\)) pour dimensionner les enrochements anti-érosion.</p>
+</div>
+</details>
+</div>
+
+<!-- EX 5 -->
+<div class="exercice">
+<h3>Exercice 5 — Cartographie Monte-Carlo de \(K\) <span class="badge time">12 min</span></h3>
+<p>Vous avez 50 mesures de \(K\) sur un plan de 40 ha suivant une loi log-normale (\(\mu_{\ln K} = -0{,}8\), \(\sigma_{\ln K} = 0{,}9\)). Simulez-les et comparez la moyenne arithmétique, géométrique et harmonique.</p>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>set.seed(2026)
+K_sample <- exp(rnorm(50, mean = -0.8, sd = 0.9))
+
+moyennes <- tibble(
+  type = c("Arithmétique","Géométrique","Harmonique"),
+  K    = c(mean(K_sample),
+           exp(mean(log(K_sample))),
+           1/mean(1/K_sample))
+)
+print(moyennes)
+
+# Histogramme log
+ggplot(data.frame(K = K_sample), aes(K)) +
+  geom_histogram(bins = 15, fill = "#00549b", color = "white") +
+  scale_x_log10() +
+  geom_vline(data = moyennes, aes(xintercept = K, color = type), linewidth = 1.1) +
+  labs(title = "Distribution log-normale de K",
+       x = "K (m/j, échelle log)", y = "Fréquence") +
+  theme_minimal()</code></pre>
+<p><b>Leçon :</b> \(K_{arith} &gt; K_{géom} &gt; K_{harm}\). Pour un agencement hétérogène typique, c'est <b>la moyenne géométrique</b> qui est la meilleure estimation du K effectif bloc (justification par la théorie d'homogénéisation). La moyenne arithmétique surestime systématiquement.</p>
+</div>
+</details>
+</div>
+
+<h2>Questions de synthèse</h2>
+<ol>
+  <li>Quand Darcy cesse-t-il d'être valide ? Donnez 2 exemples (sols très grossiers, milieux fissurés).</li>
+  <li>Comment estimer \(K_h/K_v\) à partir de deux trous à la tarière adjacents ?</li>
+  <li>Que signifie physiquement la moyenne harmonique pour un flux vertical à travers un profil stratifié ?</li>
+</ol>
+
+<div class="box note">
+<strong>Livrable attendu</strong>
+<p>Script R commenté + un graphique \(K(T)\) + un tableau comparatif des trois moyennes avec interprétation (1 paragraphe).</p>
+</div>
+
+</main>
+
+<footer>GAE-3007 Drainage — TP 2 · Université Laval · Prof. Silvio J. Gumiere</footer>
+
+</body>
+</html>

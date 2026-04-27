@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>GAE-3007 — TP Chapitre 1 : Bilan hydrique et indices de drainage</title>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+:root{
+  --ulbleu:#003e71; --ulrouge:#961428; --ulor:#d59200;
+  --bg:#f6f7fb; --fg:#1a1a1a; --code:#f3f1ec; --accent:#003e71;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",system-ui,Arial,sans-serif;background:var(--bg);color:var(--fg);line-height:1.55}
+header{background:linear-gradient(135deg,var(--ulbleu),#00549b);color:#fff;padding:28px 40px;border-bottom:4px solid var(--ulor)}
+header h1{margin:0 0 6px 0;font-size:1.7em}
+header .sub{opacity:.9;font-size:1.05em}
+header .meta{margin-top:10px;font-size:.95em;opacity:.85}
+main{max-width:980px;margin:30px auto;padding:0 24px}
+h2{color:var(--ulbleu);border-bottom:2px solid var(--ulor);padding-bottom:4px;margin-top:36px}
+h3{color:var(--ulrouge);margin-top:26px}
+.box{background:#fff;border-left:4px solid var(--ulbleu);border-radius:6px;padding:14px 18px;margin:14px 0;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.box.objectifs{border-left-color:#006642}
+.box.pre{border-left-color:var(--ulor)}
+.box.context{border-left-color:#00549b;background:#eef4fa}
+.box.note{border-left-color:var(--ulrouge);background:#faeceb}
+pre{background:var(--code);padding:14px 16px;border-radius:6px;overflow-x:auto;border:1px solid #e2ddcf;font-size:.93em}
+code{font-family:"Fira Code",Consolas,monospace}
+p code,li code{background:var(--code);padding:2px 5px;border-radius:3px}
+table{border-collapse:collapse;margin:12px 0;width:100%}
+th,td{border:1px solid #d0d4dc;padding:6px 10px;text-align:left}
+th{background:var(--ulbleu);color:#fff}
+tr:nth-child(even){background:#f0f3f8}
+details.solution{background:#fffbe7;border:1px solid #e8c94a;border-radius:6px;margin:14px 0;padding:0}
+details.solution>summary{cursor:pointer;padding:10px 14px;background:#fef0b8;border-radius:6px 6px 0 0;font-weight:bold;color:#6b4a00;list-style:none}
+details.solution>summary::-webkit-details-marker{display:none}
+details.solution>summary::before{content:"▶ ";color:#a07800}
+details.solution[open]>summary::before{content:"▼ "}
+details.solution[open]>summary{border-bottom:1px solid #e8c94a}
+details.solution .content{padding:12px 16px}
+.exercice{background:#fff;border-radius:6px;padding:16px 20px;margin:20px 0;border:1px solid #d8dce3;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.exercice h3{margin-top:0}
+.badge{display:inline-block;background:var(--ulor);color:#fff;padding:2px 8px;border-radius:10px;font-size:.78em;margin-left:8px;vertical-align:middle}
+.badge.time{background:#006642}
+.toolbar{text-align:right;margin:10px 0}
+.toolbar button{background:var(--ulbleu);color:#fff;border:none;padding:8px 14px;border-radius:4px;cursor:pointer;font-size:.92em}
+.toolbar button:hover{background:#00549b}
+footer{text-align:center;padding:24px;color:#666;font-size:.9em}
+</style>
+</head>
+<body>
+<header>
+  <h1>TP 1 — Bilan hydrique et indices de drainage</h1>
+  <div class="sub">GAE-3007 · Drainage · Chapitre 1 : Drainage pour l'agriculture</div>
+  <div class="meta">Université Laval · Prof. Silvio J. Gumiere · Durée : 1 h · Environnement : R</div>
+</header>
+
+<main>
+
+<div class="toolbar">
+  <button onclick="document.querySelectorAll('details.solution').forEach(d=>d.open=true)">Afficher toutes les solutions</button>
+  <button onclick="document.querySelectorAll('details.solution').forEach(d=>d.open=false)">Masquer toutes les solutions</button>
+</div>
+
+<div class="box objectifs">
+<strong>Objectifs pédagogiques</strong>
+<ul>
+  <li>Mettre en œuvre le bilan hydrique journalier d'une parcelle drainée.</li>
+  <li>Calculer et interpréter les indices SEW-30 et SDI à partir de séries temporelles de profondeur de nappe.</li>
+  <li>Visualiser les régimes hydriques pendant la saison de croissance à l'aide de <code>ggplot2</code>.</li>
+  <li>Relier les résultats aux seuils agronomiques (maïs, soya, prairie).</li>
+</ul>
+</div>
+
+<div class="box pre">
+<strong>Prérequis R</strong>
+<pre><code>install.packages(c("tidyverse","lubridate","zoo"))
+library(tidyverse)
+library(lubridate)
+library(zoo)</code></pre>
+</div>
+
+<div class="box context">
+<strong>Rappel théorique</strong>
+<p>Le bilan hydrique journalier d'une parcelle drainée s'écrit :</p>
+\[
+\Delta S = P - \mathrm{ETR} - R - Q_d
+\]
+<p>où \(P\) est la pluie, \(\mathrm{ETR}\) l'évapotranspiration réelle, \(R\) le ruissellement et \(Q_d\) le drainage souterrain (tous en mm/j).</p>
+<p>L'indice <b>SEW-30</b> cumule l'excès d'eau au-dessus de 30 cm de profondeur :</p>
+\[
+\mathrm{SEW}_{30} = \sum_{i=1}^{n} \max\!\left(0,\;30 - h_i\right) \quad \text{[cm·jour]}
+\]
+<p>Le <b>SDI</b> (Stress Day Index) pondère chaque jour par une fonction de stress cultural \(CS_i\) :</p>
+\[
+\mathrm{SDI} = \sum_{i=1}^{n} CS_i \cdot SD_i
+\]
+</div>
+
+<h2>Contexte du TP</h2>
+<p>Vous analysez les données d'une station météorologique et d'un réseau de piézomètres installés sur une parcelle de maïs de 15 ha à Saint-Hyacinthe, printemps-été 2024. Les observations couvrent 60 jours (1<sup>er</sup> mai au 29 juin).</p>
+
+<!-- =============== EXERCICE 1 =============== -->
+<div class="exercice">
+<h3>Exercice 1 — Génération et visualisation des données <span class="badge time">12 min</span></h3>
+<p>Générez un jeu de données synthétique représentatif :</p>
+<pre><code>set.seed(42)
+n <- 60
+dates <- seq.Date(as.Date("2024-05-01"), by = "day", length.out = n)
+
+# Pluies (mm/j) — climat québécois printanier
+P <- pmax(0, round(rgamma(n, shape = 0.35, rate = 0.08), 1))
+
+# ETR (mm/j) suivant la courbe saisonnière
+ETR <- 2 + 3*sin(2*pi*(1:n)/(2*n)) + rnorm(n, 0, 0.4)
+ETR <- pmax(0.5, round(ETR, 1))
+
+# Profondeur de nappe (cm) — plus la nappe est haute, plus h est petit
+h <- 80 - 1.2*P + cumsum(rnorm(n, 0, 2.5))
+h <- pmin(pmax(h, 5), 120) |> round(1)
+
+meteo <- tibble(date = dates, P = P, ETR = ETR, h = h)
+head(meteo)</code></pre>
+<p><b>Tâches :</b></p>
+<ol>
+  <li>Calculez les statistiques descriptives (<code>summary()</code>) des trois variables.</li>
+  <li>Produisez un graphique à deux axes : pluie (barres) et profondeur de nappe (ligne inversée).</li>
+  <li>Repérez visuellement les 3 événements pluvieux majeurs.</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>summary(meteo)
+
+library(ggplot2)
+coef <- max(meteo$h) / max(meteo$P)
+
+ggplot(meteo, aes(x = date)) +
+  geom_col(aes(y = P), fill = "#00549b", alpha = 0.7) +
+  geom_line(aes(y = h/coef), color = "#961428", linewidth = 1) +
+  scale_y_continuous(
+    name = "Pluie (mm/j)",
+    sec.axis = sec_axis(~ . * coef, name = "Profondeur de nappe (cm)")
+  ) +
+  labs(title = "Régime hydrique printanier — parcelle maïs",
+       x = "Date") +
+  theme_minimal()
+
+# Les 3 plus fortes pluies
+meteo |> slice_max(P, n = 3)</code></pre>
+<p><b>Lecture :</b> on attend des remontées rapides de la nappe (h diminue) après les pluies les plus fortes, typiques d'un sol loameux avec bonne infiltration mais drainage latéral limité.</p>
+</div>
+</details>
+</div>
+
+<!-- =============== EXERCICE 2 =============== -->
+<div class="exercice">
+<h3>Exercice 2 — Bilan hydrique journalier <span class="badge time">12 min</span></h3>
+<p>On suppose qu'il n'y a pas de ruissellement (<code>R = 0</code>) et que la variation de stock \(\Delta S\) peut être calculée par différences finies de la profondeur de nappe en utilisant une porosité de drainage \(f = 0{,}07\) (loam).</p>
+<ol>
+  <li>Estimez \(Q_d\) (drainage en mm/j) à partir de \(Q_d = P - \mathrm{ETR} - \Delta S\).</li>
+  <li>Calculez le cumul annuel de chaque poste.</li>
+  <li>Vérifiez que \(\sum Q_d \ge 0\) et discutez les périodes de drainage actif.</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>f <- 0.07            # porosité de drainage
+meteo <- meteo |>
+  mutate(
+    # ΔS en mm/j : une baisse de h (nappe qui monte) = stock qui augmente
+    dh   = c(0, diff(h)),                    # cm/j (positif = nappe descend)
+    dS   = -dh * 10 * f,                     # mm/j (conversion cm→mm × f)
+    Qd   = pmax(P - ETR - dS, 0)             # drainage positif seulement
+  )
+
+cumul <- meteo |>
+  summarise(P = sum(P), ETR = sum(ETR), dS = sum(dS), Qd = sum(Qd))
+print(cumul)
+
+# Jours de drainage actif
+meteo |> filter(Qd > 1) |> nrow()
+meteo |> ggplot(aes(date, Qd)) +
+  geom_col(fill = "#006642") +
+  labs(title = "Drainage journalier estimé",
+       y = "Qd (mm/j)", x = "Date") +
+  theme_minimal()</code></pre>
+<p><b>Commentaire :</b> sur 60 jours, on s'attend à une fraction drainée de l'ordre de 20–40 % de la pluie en sol loameux bien drainé. Les pics de <code>Qd</code> suivent directement les fortes pluies avec un retard de 0 à 2 jours.</p>
+</div>
+</details>
+</div>
+
+<!-- =============== EXERCICE 3 =============== -->
+<div class="exercice">
+<h3>Exercice 3 — Indice SEW-30 <span class="badge time">12 min</span></h3>
+<p>Le seuil de 30 cm correspond au haut de la zone racinaire des grandes cultures au Québec.</p>
+<ol>
+  <li>Calculez le SEW-30 total de la série (cm·j).</li>
+  <li>Calculez un SEW-30 glissant sur 7 jours pour identifier les périodes critiques.</li>
+  <li>Comparez au seuil de tolérance pour le maïs : SEW-30 &lt; 100 cm·j par saison.</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>meteo <- meteo |>
+  mutate(excess30 = pmax(0, 30 - h))
+
+SEW30_total <- sum(meteo$excess30)
+SEW30_total
+
+# Moyenne glissante sur 7 jours
+meteo <- meteo |>
+  mutate(SEW7 = zoo::rollsum(excess30, k = 7, fill = NA, align = "right"))
+
+ggplot(meteo, aes(date, SEW7)) +
+  geom_line(color = "#961428", linewidth = 1) +
+  geom_hline(yintercept = 14, linetype = "dashed", color = "grey50") +
+  labs(title = "SEW-30 glissant (fenêtre 7 jours)",
+       subtitle = paste("Cumul saison :", round(SEW30_total,1), "cm·j"),
+       y = "SEW-30 (cm·j)", x = "Date") +
+  theme_minimal()
+
+if (SEW30_total < 100) {
+  cat("Parcelle acceptable pour le maïs.\n")
+} else {
+  cat("Parcelle potentiellement risquée — revoir l'espacement.\n")
+}</code></pre>
+<p><b>Lecture :</b> un SEW-30 &gt; 100 cm·j signifie une perte potentielle de 10–25 % du rendement selon le stade. Le SEW-30 glissant permet de cibler les 7-10 jours critiques pour une action correctrice (pompage, augmentation de capacité).</p>
+</div>
+</details>
+</div>
+
+<!-- =============== EXERCICE 4 =============== -->
+<div class="exercice">
+<h3>Exercice 4 — SDI pondéré par le stade phénologique <span class="badge time">14 min</span></h3>
+<p>Le coefficient <code>CS</code> pondère le stress selon la sensibilité de la culture :</p>
+<ul>
+  <li>Semis (j 1–15) : <code>CS = 0.6</code></li>
+  <li>Végétatif (j 16–35) : <code>CS = 1.0</code></li>
+  <li>Floraison (j 36–50) : <code>CS = 1.5</code> (stade le plus sensible)</li>
+  <li>Maturation (j 51–60) : <code>CS = 0.7</code></li>
+</ul>
+<p>Un jour est compté comme <i>stress day</i> si <code>h &lt; 30 cm</code>, on prend alors <code>SD = (30 - h)/30</code>.</p>
+<ol>
+  <li>Implémentez <code>CS</code> et <code>SD</code>.</li>
+  <li>Calculez le SDI saisonnier.</li>
+  <li>Estimez la perte de rendement relative selon \( Y/Y_0 = 1 - 0{,}004\cdot\mathrm{SDI} \).</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>meteo <- meteo |>
+  mutate(
+    j  = row_number(),
+    CS = case_when(
+      j <= 15 ~ 0.6,
+      j <= 35 ~ 1.0,
+      j <= 50 ~ 1.5,
+      TRUE    ~ 0.7
+    ),
+    SD  = ifelse(h < 30, (30 - h)/30, 0),
+    SDI_d = CS * SD
+  )
+
+SDI <- sum(meteo$SDI_d)
+cat("SDI saisonnier =", round(SDI, 2), "\n")
+
+Y_rel <- 1 - 0.004 * SDI
+cat("Rendement relatif estimé =", round(100*Y_rel, 1), "%\n")
+
+meteo |>
+  ggplot(aes(j, SDI_d, fill = CS)) +
+  geom_col() +
+  scale_fill_gradient(low = "#cfe3ff", high = "#961428") +
+  labs(title = "Contribution journalière au SDI",
+       x = "Jour de la saison", y = "CS · SD", fill = "CS") +
+  theme_minimal()</code></pre>
+<p><b>Interprétation :</b> un SDI &gt; 25 correspond typiquement à une perte &gt; 10 %. La pondération par CS met en évidence que les jours pluvieux pendant la floraison ont l'impact le plus sévère : c'est à cette période qu'il faut garantir la capacité de drainage.</p>
+</div>
+</details>
+</div>
+
+<!-- =============== EXERCICE 5 =============== -->
+<div class="exercice">
+<h3>Exercice 5 — Diagnostic et recommandation <span class="badge time">10 min</span></h3>
+<p>Sur la base des indices calculés :</p>
+<ol>
+  <li>Cette parcelle respecte-t-elle le seuil CPVQ (SEW-30 &lt; 100 cm·j) pour le maïs ?</li>
+  <li>Quels jours auraient requis une intensification du drainage (pompage) ?</li>
+  <li>Proposez deux leviers d'amélioration (espacement, profondeur, drainage contrôlé).</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>meteo |>
+  filter(SD > 0.5) |>
+  select(date, P, h, SD, CS, SDI_d) |>
+  arrange(desc(SDI_d)) |>
+  head(10)
+
+diag <- tibble(
+  indicateur = c("SEW-30 (cm·j)", "SDI", "Rendement relatif (%)"),
+  valeur     = c(round(SEW30_total,1), round(SDI,2), round(100*Y_rel,1)),
+  seuil      = c("< 100", "< 25", "> 90")
+)
+print(diag)</code></pre>
+<p><b>Pistes de discussion :</b></p>
+<ul>
+  <li>Si SEW-30 &gt; 100 : réduire l'espacement <em>L</em> (ex. 18 m → 15 m) et vérifier <em>q</em> design.</li>
+  <li>Drainage contrôlé : abaisser la nappe en avril et la remonter après la floraison → gain azote + hydrique.</li>
+  <li>Analyse de tendance : refaire l'exercice pour 10 années consécutives pour qualifier un risque climatique.</li>
+</ul>
+</div>
+</details>
+</div>
+
+<h2>Questions de synthèse</h2>
+<ol>
+  <li>Pourquoi la porosité de drainage <em>f</em> est-elle critique dans le bilan \(\Delta S\) ?</li>
+  <li>Quelles hypothèses implicites avez-vous faites en posant <em>R = 0</em> ?</li>
+  <li>Comment transposer cette analyse pour une parcelle de pommes de terre (seuil plus sévère) ?</li>
+</ol>
+
+<div class="box note">
+<strong>Livrable attendu</strong>
+<p>Script R commenté + un graphique de synthèse (2 panneaux : série SEW-30, contribution SDI par jour) + tableau de diagnostic (SEW-30, SDI, rendement relatif).</p>
+</div>
+
+</main>
+
+<footer>GAE-3007 Drainage — TP 1 · Université Laval · Prof. Silvio J. Gumiere</footer>
+
+</body>
+</html>

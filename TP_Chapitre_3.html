@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>GAE-3007 — TP Chapitre 3 : Équations de dimensionnement (Hooghoudt, Ernst, Glover-Dumm)</title>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+:root{--ulbleu:#003e71;--ulrouge:#961428;--ulor:#d59200;--bg:#f6f7fb;--fg:#1a1a1a;--code:#f3f1ec}
+*{box-sizing:border-box}body{margin:0;font-family:"Segoe UI",system-ui,Arial,sans-serif;background:var(--bg);color:var(--fg);line-height:1.55}
+header{background:linear-gradient(135deg,var(--ulbleu),#00549b);color:#fff;padding:28px 40px;border-bottom:4px solid var(--ulor)}
+header h1{margin:0 0 6px 0;font-size:1.7em}header .sub{opacity:.9;font-size:1.05em}header .meta{margin-top:10px;font-size:.95em;opacity:.85}
+main{max-width:980px;margin:30px auto;padding:0 24px}h2{color:var(--ulbleu);border-bottom:2px solid var(--ulor);padding-bottom:4px;margin-top:36px}h3{color:var(--ulrouge);margin-top:26px}
+.box{background:#fff;border-left:4px solid var(--ulbleu);border-radius:6px;padding:14px 18px;margin:14px 0;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.box.objectifs{border-left-color:#006642}.box.pre{border-left-color:var(--ulor)}.box.context{border-left-color:#00549b;background:#eef4fa}.box.note{border-left-color:var(--ulrouge);background:#faeceb}
+pre{background:var(--code);padding:14px 16px;border-radius:6px;overflow-x:auto;border:1px solid #e2ddcf;font-size:.93em}code{font-family:"Fira Code",Consolas,monospace}
+p code,li code{background:var(--code);padding:2px 5px;border-radius:3px}table{border-collapse:collapse;margin:12px 0;width:100%}th,td{border:1px solid #d0d4dc;padding:6px 10px;text-align:left}th{background:var(--ulbleu);color:#fff}tr:nth-child(even){background:#f0f3f8}
+details.solution{background:#fffbe7;border:1px solid #e8c94a;border-radius:6px;margin:14px 0;padding:0}
+details.solution>summary{cursor:pointer;padding:10px 14px;background:#fef0b8;border-radius:6px 6px 0 0;font-weight:bold;color:#6b4a00;list-style:none}
+details.solution>summary::-webkit-details-marker{display:none}
+details.solution>summary::before{content:"▶ ";color:#a07800}details.solution[open]>summary::before{content:"▼ "}
+details.solution[open]>summary{border-bottom:1px solid #e8c94a}details.solution .content{padding:12px 16px}
+.exercice{background:#fff;border-radius:6px;padding:16px 20px;margin:20px 0;border:1px solid #d8dce3;box-shadow:0 1px 3px rgba(0,0,0,.04)}.exercice h3{margin-top:0}
+.badge{display:inline-block;background:var(--ulor);color:#fff;padding:2px 8px;border-radius:10px;font-size:.78em;margin-left:8px;vertical-align:middle}.badge.time{background:#006642}
+.toolbar{text-align:right;margin:10px 0}.toolbar button{background:var(--ulbleu);color:#fff;border:none;padding:8px 14px;border-radius:4px;cursor:pointer;font-size:.92em}.toolbar button:hover{background:#00549b}
+footer{text-align:center;padding:24px;color:#666;font-size:.9em}
+</style>
+</head>
+<body>
+<header>
+  <h1>TP 3 — Équations de dimensionnement</h1>
+  <div class="sub">GAE-3007 · Drainage · Chapitre 3 : Hooghoudt, Ernst, Glover-Dumm, De Zeeuw-Hellinga</div>
+  <div class="meta">Université Laval · Prof. Silvio J. Gumiere · Durée : 1 h · Environnement : R</div>
+</header>
+
+<main>
+
+<div class="toolbar">
+  <button onclick="document.querySelectorAll('details.solution').forEach(d=>d.open=true)">Afficher toutes les solutions</button>
+  <button onclick="document.querySelectorAll('details.solution').forEach(d=>d.open=false)">Masquer toutes les solutions</button>
+</div>
+
+<div class="box objectifs">
+<strong>Objectifs pédagogiques</strong>
+<ul>
+  <li>Résoudre itérativement l'équation de Hooghoudt (régime permanent).</li>
+  <li>Appliquer Ernst pour un sol bicouche.</li>
+  <li>Utiliser Glover-Dumm pour un dimensionnement en régime transitoire.</li>
+  <li>Comparer les approches et construire des abaques \(L(K, q)\).</li>
+</ul>
+</div>
+
+<div class="box pre">
+<strong>Prérequis R</strong>
+<pre><code>library(tidyverse)</code></pre>
+</div>
+
+<div class="box context">
+<strong>Équations clés</strong>
+<p><b>Hooghoudt</b> (régime permanent) :</p>
+\[
+L^2 = \dfrac{8 K_h d_e H + 4 K_v H^2}{q}
+\]
+<p>avec \(d_e\) la profondeur équivalente (dépend de \(L\) et \(D_0\)) :</p>
+\[
+d_e = \dfrac{D_0}{1 + \dfrac{8 D_0}{\pi L}\,\ln\!\left(\dfrac{D_0}{r_e}\right)}
+\]
+<p><b>Glover-Dumm</b> (transitoire) :</p>
+\[
+h(t) = h_0 \exp\!\left(-\dfrac{\pi^2 K \bar{D} t}{\mu L^2}\right)
+\]
+<p>où \(\bar{D}\) est l'épaisseur moyenne saturée, \(\mu\) la porosité de drainage.</p>
+</div>
+
+<!-- EX 1 -->
+<div class="exercice">
+<h3>Exercice 1 — Hooghoudt : résolution itérative <span class="badge time">15 min</span></h3>
+<p>Conditions : \(K = 0{,}6\) m/j (isotrope), \(D_0 = 3\) m, \(H = 0{,}5\) m, \(q = 10\) mm/j, \(r_e = 0{,}10\) m (drain enveloppé).</p>
+<ol>
+  <li>Implémentez une fonction <code>hooghoudt(L)</code> qui retourne \(L_{calc}\) à partir de \(L\) (itération par point fixe).</li>
+  <li>Trouvez \(L\) solution (tolérance 0,01 m).</li>
+  <li>Vérifiez que \(d_e &lt; D_0\).</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>K  <- 0.6
+D0 <- 3
+H  <- 0.5
+q  <- 0.010
+re <- 0.10
+
+d_e <- function(L, D0, re){
+  D0 / (1 + (8*D0)/(pi*L) * log(D0/re))
+}
+
+hooghoudt_L <- function(L, K, D0, H, q, re){
+  de <- d_e(L, D0, re)
+  sqrt( (8*K*de*H + 4*K*H^2) / q )
+}
+
+L <- 20                # valeur initiale
+for (i in 1:30){
+  L_new <- hooghoudt_L(L, K, D0, H, q, re)
+  if (abs(L_new - L) < 0.01) break
+  L <- L_new
+}
+cat(sprintf("Convergence en %d itérations\n", i))
+cat(sprintf("L  = %.2f m\n", L_new))
+cat(sprintf("de = %.3f m (vs D0 = %.1f m)\n", d_e(L_new, D0, re), D0))</code></pre>
+<p>On attend \(L \approx 21\) m, \(d_e \approx 1{,}6\) m. Remarque : \(d_e\) diverge rapidement de \(D_0\) à mesure que \(L/D_0\) diminue — c'est la correction de résistance radiale de Hooghoudt.</p>
+</div>
+</details>
+</div>
+
+<!-- EX 2 -->
+<div class="exercice">
+<h3>Exercice 2 — Ernst pour sol bicouche <span class="badge time">12 min</span></h3>
+<p>Sol : argile (0–1 m, \(K_1 = 0{,}15\) m/j) sur sable (1–3 m, \(K_2 = 2{,}0\) m/j). Drain à 1,2 m. \(q = 12\) mm/j, \(H = 0{,}6\) m. On utilise une version simplifiée :</p>
+\[
+L^2 = \dfrac{8 K_2 D_2 H + 4 K_1 H^2}{q}
+\]
+<p>avec \(D_2\) l'épaisseur de la couche perméable inférieure.</p>
+<ol>
+  <li>Calculez \(L\) avec Ernst simplifié.</li>
+  <li>Comparez à ce qu'on aurait obtenu en négligeant la couche sable (\(K\) uniforme = 0,15 m/j).</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>ernst_simple <- function(K1, K2, D2, H, q){
+  sqrt( (8*K2*D2*H + 4*K1*H^2) / q )
+}
+
+K1 <- 0.15
+K2 <- 2.0
+D2 <- 1.8          # épaisseur sable sous le drain (de 1.2 à 3 m)
+H  <- 0.6
+q  <- 0.012
+
+L_ernst <- ernst_simple(K1, K2, D2, H, q)
+cat(sprintf("Ernst : L = %.2f m\n", L_ernst))
+
+# Si on ignore le sable
+L_uni <- sqrt( (8*K1*D2*H + 4*K1*H^2) / q )
+cat(sprintf("Sans couche sable : L = %.2f m\n", L_uni))
+cat(sprintf("Ratio = %.2f\n", L_ernst/L_uni))</code></pre>
+<p><b>Enseignement :</b> la couche de sable sous-jacente multiplie le pouvoir drainant d'un facteur ~3–4. Reconnaître cette structure en phase de reconnaissance est financièrement déterminant (moins de drains nécessaires).</p>
+</div>
+</details>
+</div>
+
+<!-- EX 3 -->
+<div class="exercice">
+<h3>Exercice 3 — Glover-Dumm : rabattement transitoire <span class="badge time">15 min</span></h3>
+<p>CPVQ exige qu'en 48 h, la nappe passe de 0,9 m à 0,3 m sous la surface. Données : \(K = 0{,}4\) m/j, \(\bar{D} = 2\) m, \(\mu = 0{,}07\).</p>
+<ol>
+  <li>Trouvez \(L\) qui satisfait ce critère.</li>
+  <li>Tracez \(h(t)\) pour trois espacements (\(L_{opt}\), \(L_{opt}+5\), \(L_{opt}-5\)).</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>K  <- 0.4
+Db <- 2
+mu <- 0.07
+h0 <- 0.90
+hT <- 0.30
+Tc <- 2              # jours
+
+# Inversion analytique : h(T)/h0 = exp(-pi^2 K D t / (mu L^2))
+# => L^2 = pi^2 K D T / (mu * ln(h0/hT))
+L_opt <- sqrt( pi^2 * K * Db * Tc / (mu * log(h0/hT)) )
+cat(sprintf("L optimal (Glover-Dumm) = %.2f m\n", L_opt))
+
+glover <- function(t, h0, K, Db, mu, L){
+  h0 * exp(-pi^2 * K * Db * t / (mu * L^2))
+}
+
+t <- seq(0, 5, by = 0.1)
+df <- expand.grid(t = t, L = c(L_opt-5, L_opt, L_opt+5)) |>
+  mutate(h = glover(t, h0, K, Db, mu, L),
+         L = factor(round(L,1)))
+
+library(ggplot2)
+ggplot(df, aes(t, h, color = L)) +
+  geom_line(linewidth = 1.1) +
+  geom_hline(yintercept = hT, linetype = "dashed") +
+  geom_vline(xintercept = Tc, linetype = "dotted") +
+  labs(title = "Rabattement de la nappe (Glover-Dumm)",
+       x = "Temps (j)", y = "h (m sous la surface)") +
+  theme_minimal()</code></pre>
+<p>On attend \(L_{opt} \approx 19\) m. Avec \(L=24\) m, la nappe n'atteindrait 0,30 m qu'après ~3,5 jours — hors norme CPVQ.</p>
+</div>
+</details>
+</div>
+
+<!-- EX 4 -->
+<div class="exercice">
+<h3>Exercice 4 — Abaque \(L(K, q)\) <span class="badge time">10 min</span></h3>
+<p>Produisez un heatmap de \(L\) (Hooghoudt) pour :</p>
+<ul>
+  <li>\(K\) de 0,1 à 2,0 m/j (50 valeurs)</li>
+  <li>\(q\) de 5 à 25 mm/j (50 valeurs)</li>
+  <li>\(D_0 = 2{,}5\) m, \(H = 0{,}4\) m, \(r_e = 0{,}08\) m</li>
+</ul>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>solve_hooghoudt <- function(K, q, D0 = 2.5, H = 0.4, re = 0.08){
+  L <- 20
+  for (i in 1:50){
+    de <- d_e(L, D0, re)
+    L_new <- sqrt( (8*K*de*H + 4*K*H^2) / q )
+    if (abs(L_new - L) < 1e-3) break
+    L <- L_new
+  }
+  L_new
+}
+
+grid <- expand.grid(K = seq(0.1, 2.0, length.out = 50),
+                    q = seq(0.005, 0.025, length.out = 50)) |>
+  mutate(L = mapply(solve_hooghoudt, K, q))
+
+ggplot(grid, aes(K, q*1000, fill = L)) +
+  geom_raster() +
+  geom_contour(aes(z = L), color = "white", breaks = c(10,15,20,25,30,40,60)) +
+  scale_fill_viridis_c(option = "mako") +
+  labs(title = "Abaque L (m) — Hooghoudt",
+       x = "K (m/j)", y = "q (mm/j)", fill = "L (m)") +
+  theme_minimal()</code></pre>
+<p><b>Lecture :</b> pour un critère \(q=10\) mm/j, \(L\) varie de ~10 m en argile (K=0,1) à ~50 m en sable (K=2). Chaque isoligne est un outil de pré-design rapide.</p>
+</div>
+</details>
+</div>
+
+<!-- EX 5 -->
+<div class="exercice">
+<h3>Exercice 5 — Analyse de sensibilité <span class="badge time">8 min</span></h3>
+<p>On sait que \(L \propto \sqrt{K}\). Vérifiez numériquement et calculez l'élasticité :
+\[
+\epsilon_{L,K} = \dfrac{\partial \ln L}{\partial \ln K}
+\]</p>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>K_seq <- seq(0.1, 2, length.out = 30)
+L_seq <- sapply(K_seq, solve_hooghoudt, q = 0.010)
+
+# Régression log-log
+fit <- lm(log(L_seq) ~ log(K_seq))
+coef(fit)
+cat(sprintf("Élasticité estimée = %.3f (théorie ~ 0.5)\n", coef(fit)[2]))
+
+ggplot(data.frame(K = K_seq, L = L_seq), aes(K, L)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE,
+              linetype = "dashed", color = "#961428") +
+  scale_x_log10() + scale_y_log10() +
+  labs(title = "Élasticité L/K (log-log)",
+       x = "K (m/j)", y = "L (m)") +
+  theme_minimal()</code></pre>
+<p><b>Conclusion :</b> une erreur de 50 % sur \(K\) entraîne ~22 % d'erreur sur \(L\). D'où l'importance d'une mesure dense de \(K\) (voir TP 4).</p>
+</div>
+</details>
+</div>
+
+<h2>Questions de synthèse</h2>
+<ol>
+  <li>Pourquoi Hooghoudt retient-il une profondeur équivalente \(d_e\) plutôt que \(D_0\) brute ?</li>
+  <li>À quel moment faut-il passer du régime permanent (Hooghoudt) au régime transitoire (Glover-Dumm) ?</li>
+  <li>Que faire si le sol présente une anisotropie \(K_h/K_v &gt; 10\) ?</li>
+</ol>
+
+<div class="box note">
+<strong>Livrable attendu</strong>
+<p>Script R + abaque \(L(K,q)\) (Ex. 4) + graphique transitoire comparant \(L_{opt}\pm 5\) (Ex. 3) + tableau de sensibilité.</p>
+</div>
+
+</main>
+
+<footer>GAE-3007 Drainage — TP 3 · Université Laval · Prof. Silvio J. Gumiere</footer>
+
+</body>
+</html>

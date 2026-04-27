@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>GAE-3007 — TP Chapitre 6 : Critères de design et analyse économique</title>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+:root{--ulbleu:#003e71;--ulrouge:#961428;--ulor:#d59200;--bg:#f6f7fb;--fg:#1a1a1a;--code:#f3f1ec}
+*{box-sizing:border-box}body{margin:0;font-family:"Segoe UI",system-ui,Arial,sans-serif;background:var(--bg);color:var(--fg);line-height:1.55}
+header{background:linear-gradient(135deg,var(--ulbleu),#00549b);color:#fff;padding:28px 40px;border-bottom:4px solid var(--ulor)}
+header h1{margin:0 0 6px 0;font-size:1.7em}header .sub{opacity:.9;font-size:1.05em}header .meta{margin-top:10px;font-size:.95em;opacity:.85}
+main{max-width:980px;margin:30px auto;padding:0 24px}h2{color:var(--ulbleu);border-bottom:2px solid var(--ulor);padding-bottom:4px;margin-top:36px}h3{color:var(--ulrouge);margin-top:26px}
+.box{background:#fff;border-left:4px solid var(--ulbleu);border-radius:6px;padding:14px 18px;margin:14px 0;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.box.objectifs{border-left-color:#006642}.box.pre{border-left-color:var(--ulor)}.box.context{border-left-color:#00549b;background:#eef4fa}.box.note{border-left-color:var(--ulrouge);background:#faeceb}
+pre{background:var(--code);padding:14px 16px;border-radius:6px;overflow-x:auto;border:1px solid #e2ddcf;font-size:.93em}code{font-family:"Fira Code",Consolas,monospace}
+p code,li code{background:var(--code);padding:2px 5px;border-radius:3px}table{border-collapse:collapse;margin:12px 0;width:100%}th,td{border:1px solid #d0d4dc;padding:6px 10px;text-align:left}th{background:var(--ulbleu);color:#fff}tr:nth-child(even){background:#f0f3f8}
+details.solution{background:#fffbe7;border:1px solid #e8c94a;border-radius:6px;margin:14px 0;padding:0}
+details.solution>summary{cursor:pointer;padding:10px 14px;background:#fef0b8;border-radius:6px 6px 0 0;font-weight:bold;color:#6b4a00;list-style:none}
+details.solution>summary::-webkit-details-marker{display:none}
+details.solution>summary::before{content:"▶ ";color:#a07800}details.solution[open]>summary::before{content:"▼ "}
+details.solution[open]>summary{border-bottom:1px solid #e8c94a}details.solution .content{padding:12px 16px}
+.exercice{background:#fff;border-radius:6px;padding:16px 20px;margin:20px 0;border:1px solid #d8dce3;box-shadow:0 1px 3px rgba(0,0,0,.04)}.exercice h3{margin-top:0}
+.badge{display:inline-block;background:var(--ulor);color:#fff;padding:2px 8px;border-radius:10px;font-size:.78em;margin-left:8px;vertical-align:middle}.badge.time{background:#006642}
+.toolbar{text-align:right;margin:10px 0}.toolbar button{background:var(--ulbleu);color:#fff;border:none;padding:8px 14px;border-radius:4px;cursor:pointer;font-size:.92em}.toolbar button:hover{background:#00549b}
+footer{text-align:center;padding:24px;color:#666;font-size:.9em}
+</style>
+</head>
+<body>
+<header>
+  <h1>TP 6 — Critères de design et analyse économique</h1>
+  <div class="sub">GAE-3007 · Drainage · Chapitre 6 : h/q, SDI, optimum économique, drainage contrôlé</div>
+  <div class="meta">Université Laval · Prof. Silvio J. Gumiere · Durée : 1 h · Environnement : R</div>
+</header>
+
+<main>
+
+<div class="toolbar">
+  <button onclick="document.querySelectorAll('details.solution').forEach(d=>d.open=true)">Afficher toutes les solutions</button>
+  <button onclick="document.querySelectorAll('details.solution').forEach(d=>d.open=false)">Masquer toutes les solutions</button>
+</div>
+
+<div class="box objectifs">
+<strong>Objectifs pédagogiques</strong>
+<ul>
+  <li>Construire et interpréter une courbe d'<b>intensité critique</b> h vs q (critère de design CPVQ).</li>
+  <li>Calculer le <b>SDI</b> (Stress Day Index) à partir de chroniques de nappe.</li>
+  <li>Effectuer une analyse coût-bénéfice complète : trouver l'<b>écartement économique optimal</b>.</li>
+  <li>Simuler l'effet d'un <b>drainage contrôlé</b> (Controlled Drainage / sub-irrigation) sur les volumes drainés.</li>
+  <li>Utiliser une fonction de production \(Y(h)\) pour quantifier la perte de rendement.</li>
+</ul>
+</div>
+
+<div class="box pre">
+<strong>Prérequis R</strong>
+<pre><code>library(tidyverse)
+library(lubridate)</code></pre>
+</div>
+
+<div class="box context">
+<strong>Définitions</strong>
+<p><b>Stress Day Index</b> (Hardjoamidjojo &amp; Skaggs) :</p>
+\[
+SDI = \sum_{j=1}^{N} SD_j\cdot CS_j
+\]
+<p>où \(SD_j\) est le nombre de jours avec nappe trop haute (ex. \(< 30\) cm) pondéré par un coefficient de stade \(CS_j\).</p>
+<p><b>Fonction de production simple</b> :</p>
+\[
+Y = Y_{max}\,(1-\alpha\cdot SDI)
+\]
+<p><b>Coût annuel équivalent</b> (CRF avec \(i\) et \(n\) ans) :</p>
+\[
+C_{an}(L) = \frac{C_{inv}(L)\cdot i(1+i)^n}{(1+i)^n-1} + C_{ent}
+\]
+<p><b>Bénéfice annuel</b> :</p>
+\[
+B_{an}(L) = \bigl[Y(L) - Y_0\bigr]\cdot P_{prod}\cdot S
+\]
+</div>
+
+<!-- EX 1 -->
+<div class="exercice">
+<h3>Exercice 1 — Courbe h/q (critère d'intensité critique) <span class="badge time">10 min</span></h3>
+<p>Pour un sol loameux drainé par Hooghoudt (\(K = 0{,}8\) m/j, \(d = 3{,}2\) m, \(D = 1{,}2\) m), on souhaite tracer l'écartement requis en fonction du taux de drainage \(q\) pour trois hauteurs critiques de nappe \(h \in \{0{,}3 ; 0{,}5 ; 0{,}8\}\) m.</p>
+<ol>
+  <li>Utilisez l'équation explicite \(L^2 = (4 K h^2 + 8 K d h)/q\).</li>
+  <li>Tracez \(L\) (en ordonnée, log) vs \(q\) (en abscisse, de 5 à 25 mm/j) pour les trois h.</li>
+  <li>Marquez le point de design CPVQ : \(q = 12\) mm/j, \(h = 0{,}30\) m.</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>K <- 0.8; d <- 3.2; D <- 1.2
+L_hoog <- function(q_mm_j, h){
+  q <- q_mm_j / 1000                    # m/j
+  sqrt((4*K*h^2 + 8*K*d*h) / q)
+}
+
+grid <- expand_grid(q = seq(5, 25, 1),
+                    h = c(0.30, 0.50, 0.80)) |>
+  mutate(L = L_hoog(q, h))
+
+ggplot(grid, aes(q, L, colour = factor(h))) +
+  geom_line(size = 1) +
+  scale_y_log10() +
+  geom_point(data = tibble(q=12, h=0.30, L=L_hoog(12,0.30)),
+             aes(q, L), colour = "red", size = 3, inherit.aes = FALSE) +
+  annotate("text", x=13, y=L_hoog(12,0.30), label="CPVQ (12 mm/j; h=30 cm)",
+           hjust=0, colour="red") +
+  labs(x="q (mm/j)", y="L (m, log)", colour="h (m)",
+       title="Écartement requis – critère h/q") + theme_minimal()
+</code></pre>
+<p><b>Résultats indicatifs :</b></p>
+<table>
+<tr><th>h (m)</th><th>L à q=12 mm/j (m)</th></tr>
+<tr><td>0,30</td><td>\(\sqrt{(4\cdot 0{,}8\cdot 0{,}09 + 8\cdot 0{,}8\cdot 3{,}2\cdot 0{,}3)/0{,}012}\approx 23{,}0\)</td></tr>
+<tr><td>0,50</td><td>\(\approx 30{,}4\)</td></tr>
+<tr><td>0,80</td><td>\(\approx 38{,}9\)</td></tr>
+</table>
+<p>Plus on tolère une nappe haute (h grand), plus on peut élargir les drains ; le design CPVQ (12 mm/j, h=30 cm) fixe \(L\approx 23\) m.</p>
+</div>
+</details>
+</div>
+
+<!-- EX 2 -->
+<div class="exercice">
+<h3>Exercice 2 — Calcul du SDI à partir de chroniques de nappe <span class="badge time">12 min</span></h3>
+<p>On dispose de mesures horaires de profondeur de nappe (m sous la surface) pour la saison mai–août (122 jours). Les coefficients de stade \(CS\) varient (semis, végétation, maturation).</p>
+<pre><code>set.seed(2026)
+N  <- 122
+dt <- seq.Date(as.Date("2026-05-01"), by = "day", length.out = N)
+wt <- 0.7 + 0.5*sin(2*pi*(1:N)/20) + rnorm(N, 0, 0.15)  # profondeur nappe (m)
+CS <- c(rep(0.6, 25), rep(1.0, 60), rep(0.4, 37))        # semis, végét., maturité
+chronique <- tibble(date = dt, wt_m = wt, CS = CS)</code></pre>
+<ol>
+  <li>Calculez \(SD_j = \max(0,\,0{,}30 - wt_j)\) (jours de stress, en m·j) : nappe au-dessus de 30 cm.</li>
+  <li>Calculez \(SDI = \sum SD_j \cdot CS_j\).</li>
+  <li>Identifiez la période la plus critique (fenêtre mobile 7 jours).</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>library(zoo)
+set.seed(2026)
+N  <- 122
+dt <- seq.Date(as.Date("2026-05-01"), by = "day", length.out = N)
+wt <- 0.7 + 0.5*sin(2*pi*(1:N)/20) + rnorm(N, 0, 0.15)
+CS <- c(rep(0.6, 25), rep(1.0, 60), rep(0.4, 37))
+
+chronique <- tibble(date = dt, wt_m = wt, CS = CS) |>
+  mutate(SD   = pmax(0, 0.30 - wt_m),
+         SDcs = SD * CS,
+         SDcs_7d = rollmean(SDcs, 7, fill = NA, align = "right"))
+
+SDI <- sum(chronique$SDcs)
+cat(sprintf("SDI saisonnier = %.2f m·j\n", SDI))
+
+pire <- chronique |> slice_max(SDcs_7d, n = 1)
+cat("Pire fenêtre 7 j :", format(pire$date), "\n")
+
+ggplot(chronique, aes(date, wt_m)) +
+  geom_line() +
+  geom_hline(yintercept = 0.30, linetype = 2, colour = "red") +
+  scale_y_reverse() +
+  labs(x = NULL, y = "Profondeur nappe (m)",
+       title = "Chronique de nappe (positif = vers le bas)") + theme_minimal()
+</code></pre>
+<p>Avec un SDI saisonnier exprimé en m·j, on peut hiérarchiser les parcelles : SDI &lt; 1 m·j signifie drainage efficace. La fenêtre de stress maximal correspond en général à la fin juin (stades végétatifs + précipitations).</p>
+</div>
+</details>
+</div>
+
+<!-- EX 3 -->
+<div class="exercice">
+<h3>Exercice 3 — Optimum économique (écartement) <span class="badge time">15 min</span></h3>
+<p>Une analyse coût-bénéfice porte sur un champ de 20 ha (maïs, \(Y_{max}\) = 12 t/ha, prix \(P\) = 220 \$/t). Le drainage dure 40 ans, taux d'intérêt \(i=5\%\), entretien 30 \$/ha·an. Relation \(Y(L)\) estimée par simulation DRAINMOD :</p>
+<pre><code>perf <- tibble(
+  L_m       = c(10, 15, 20, 25, 30, 40, 50),
+  Y_tha     = c(11.8, 11.6, 11.3, 10.9, 10.4, 9.4, 8.2),
+  cout_in   = c(4800, 3600, 2900, 2450, 2150, 1750, 1500)  # $/ha
+)</code></pre>
+<ol>
+  <li>Calculez le coût annuel équivalent par hectare (CRF + entretien).</li>
+  <li>Calculez le bénéfice net annuel : \(B = (Y - Y_0)\cdot P - C_{an}\), avec \(Y_0 = 7{,}0\) t/ha (sans drainage).</li>
+  <li>Déterminez \(L^\star\) optimal. Tracez \(B(L)\).</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>i <- 0.05; n <- 40
+CRF <- i*(1+i)^n / ((1+i)^n - 1)
+Cent <- 30
+Y0 <- 7.0; P <- 220
+
+perf <- tibble(
+  L_m     = c(10, 15, 20, 25, 30, 40, 50),
+  Y_tha   = c(11.8, 11.6, 11.3, 10.9, 10.4, 9.4, 8.2),
+  cout_in = c(4800, 3600, 2900, 2450, 2150, 1750, 1500)
+) |>
+  mutate(C_an = cout_in * CRF + Cent,
+         gain = (Y_tha - Y0) * P,
+         B    = gain - C_an)
+
+print(perf, digits = 3)
+L_star <- perf$L_m[which.max(perf$B)]
+cat("Écartement optimal L* =", L_star, "m\n")
+
+ggplot(perf, aes(L_m, B)) + geom_line() + geom_point() +
+  geom_vline(xintercept = L_star, linetype=2, colour="red") +
+  labs(x="L (m)", y="Bénéfice net ($/ha·an)",
+       title="Optimum économique") + theme_minimal()
+</code></pre>
+<p><b>Résultat indicatif :</b></p>
+<table>
+<tr><th>L (m)</th><th>\(C_{an}\) ($/ha·an)</th><th>Gain ($/ha·an)</th><th>B</th></tr>
+<tr><td>10</td><td>309,8</td><td>1056</td><td>746,2</td></tr>
+<tr><td>15</td><td>239,8</td><td>1012</td><td>772,2</td></tr>
+<tr><td>20</td><td>198,9</td><td>946</td><td>747,1</td></tr>
+<tr><td>25</td><td>172,7</td><td>858</td><td>685,3</td></tr>
+</table>
+<p><b>L\(^\star\) = 15 m</b> (B = 772 \$/ha·an). Noter la faible pente de B autour de l'optimum : une marge ±5 m est acceptable (robustesse au prix du grain).</p>
+</div>
+</details>
+</div>
+
+<!-- EX 4 -->
+<div class="exercice">
+<h3>Exercice 4 — Drainage contrôlé : volume drainé <span class="badge time">13 min</span></h3>
+<p>Comparez deux modes d'opération sur la chronique ci-dessous : (A) drainage libre — évacuation tant que nappe \(>\) drain ; (B) contrôlé — évacuation tant que nappe \(>\) 60 cm (hauteur de retenue).</p>
+<pre><code>set.seed(42)
+jours &lt;- 1:120
+wt    &lt;- 0.2 + 0.6*sin(2*pi*jours/30) + rnorm(120, 0, 0.1)  # profondeur (m)
+q_cap &lt;- 0.012                                               # m/j (capacité drain)</code></pre>
+<ol>
+  <li>Pour chaque jour, \(q_A = q_{cap}\) si wt &lt; 1,2 m (drain à 1,2 m), 0 sinon.</li>
+  <li>\(q_B = q_{cap}\) si wt &lt; 0,60 m, 0 sinon.</li>
+  <li>Comparez les volumes cumulés (mm·ha cumulés = mm·10).</li>
+  <li>Bonus : estimez la réduction de pertes de nitrates (hypothèse : 15 mg/L).</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>set.seed(42)
+jours <- 1:120
+wt    <- 0.2 + 0.6*sin(2*pi*jours/30) + rnorm(120, 0, 0.1)
+q_cap <- 0.012
+prof_drain <- 1.2
+retenue    <- 0.60
+
+scen <- tibble(j = jours, wt = wt) |>
+  mutate(qA = ifelse(wt < prof_drain, q_cap, 0),
+         qB = ifelse(wt < retenue,    q_cap, 0),
+         VA = cumsum(qA)*1000,     # mm cumulés
+         VB = cumsum(qB)*1000)
+
+cat(sprintf("Volume drainé total A = %.1f mm\n", tail(scen$VA,1)))
+cat(sprintf("Volume drainé total B = %.1f mm\n", tail(scen$VB,1)))
+cat(sprintf("Réduction = %.0f %%\n", 100*(1 - tail(scen$VB,1)/tail(scen$VA,1))))
+
+# nitrates : 15 mg/L = 0.015 kg/m^3
+# 1 mm sur 1 ha = 10 m^3 d'eau
+dV_mm <- tail(scen$VA,1) - tail(scen$VB,1)
+dN    <- dV_mm * 10 * 0.015        # kg/ha
+cat(sprintf("Réduction pertes NO3 ≈ %.1f kg/ha/saison\n", dN))
+
+scen |> pivot_longer(c(VA,VB)) |>
+  ggplot(aes(j, value, colour=name)) + geom_line(size=1) +
+  labs(x="Jour", y="Volume drainé cumulé (mm)",
+       colour="Scénario", title="Drainage libre vs contrôlé") +
+  theme_minimal()
+</code></pre>
+<p><b>Interprétation :</b> le contrôlé réduit le volume drainé de 30–40 %, ce qui se traduit par une réduction proportionnelle des pertes en nitrates (quelques kg·ha/saison) — un co-bénéfice environnemental important pour les programmes québécois Prime-Vert et Agri-Climat.</p>
+</div>
+</details>
+</div>
+
+<!-- EX 5 -->
+<div class="exercice">
+<h3>Exercice 5 — Sensibilité multi-critères (heatmap) <span class="badge time">10 min</span></h3>
+<p>Pour le maïs, générez une heatmap du bénéfice \(B(L, P)\) où \(L \in [10,40]\) m et \(P \in [150, 300]\) \$/t.</p>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code># fonction Y(L) interpolée
+Y_fun <- approxfun(c(10,15,20,25,30,40,50),
+                   c(11.8,11.6,11.3,10.9,10.4,9.4,8.2))
+C_fun <- approxfun(c(10,15,20,25,30,40,50),
+                   c(4800,3600,2900,2450,2150,1750,1500))
+
+grid <- expand_grid(L = seq(10, 40, 2),
+                    P = seq(150, 300, 10)) |>
+  mutate(Y = Y_fun(L), C = C_fun(L),
+         B = (Y - 7)*P - (C*0.05*(1.05)^40/((1.05)^40-1) + 30))
+
+ggplot(grid, aes(L, P, fill = B)) +
+  geom_raster() +
+  geom_contour(aes(z = B), colour = "white") +
+  scale_fill_viridis_c() +
+  labs(x="L (m)", y="Prix maïs ($/t)", fill="B ($/ha·an)",
+       title="Sensibilité : Bénéfice = f(L, prix)") + theme_minimal()
+</code></pre>
+<p><b>Observation :</b> l'optimum se déplace légèrement vers les petits L quand le prix monte (intensification rentable) et vers les grands L quand le prix baisse (minimiser l'investissement). Le design reste stable entre 15 et 20 m pour la plage typique du prix au Québec.</p>
+</div>
+</details>
+</div>
+
+<h2>Questions de synthèse</h2>
+<ol>
+  <li>Pourquoi le critère CPVQ de 12 mm/j sur 24 h est-il choisi plutôt qu'une pluie de projet de période de retour 10 ans ?</li>
+  <li>Quels stades culturaux concentrent le plus de risque de stress hydrique au Québec (via CS) ?</li>
+  <li>Le drainage contrôlé est-il applicable à toutes les pentes de champs ? Quelles limites ?</li>
+  <li>Quels effets du changement climatique anticiper sur le design du drainage (intensité, fréquence, saison d'enjeu) ?</li>
+</ol>
+
+<div class="box note">
+<strong>Livrable</strong> — Rapport RMarkdown HTML comprenant (1) la courbe h/q, (2) la chronique SDI, (3) l'analyse économique avec L\(^\star\), (4) le comparatif libre/contrôlé avec réduction chiffrée, (5) la heatmap de sensibilité et (6) la réponse aux questions.
+</div>
+
+<footer>
+GAE-3007 Drainage · Université Laval · Prof. Silvio J. Gumiere · TP Chapitre 6
+</footer>
+
+</main>
+</body>
+</html>

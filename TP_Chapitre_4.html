@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>GAE-3007 — TP Chapitre 4 : Mesure de la conductivité hydraulique saturée</title>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+:root{--ulbleu:#003e71;--ulrouge:#961428;--ulor:#d59200;--bg:#f6f7fb;--fg:#1a1a1a;--code:#f3f1ec}
+*{box-sizing:border-box}body{margin:0;font-family:"Segoe UI",system-ui,Arial,sans-serif;background:var(--bg);color:var(--fg);line-height:1.55}
+header{background:linear-gradient(135deg,var(--ulbleu),#00549b);color:#fff;padding:28px 40px;border-bottom:4px solid var(--ulor)}
+header h1{margin:0 0 6px 0;font-size:1.7em}header .sub{opacity:.9;font-size:1.05em}header .meta{margin-top:10px;font-size:.95em;opacity:.85}
+main{max-width:980px;margin:30px auto;padding:0 24px}h2{color:var(--ulbleu);border-bottom:2px solid var(--ulor);padding-bottom:4px;margin-top:36px}h3{color:var(--ulrouge);margin-top:26px}
+.box{background:#fff;border-left:4px solid var(--ulbleu);border-radius:6px;padding:14px 18px;margin:14px 0;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.box.objectifs{border-left-color:#006642}.box.pre{border-left-color:var(--ulor)}.box.context{border-left-color:#00549b;background:#eef4fa}.box.note{border-left-color:var(--ulrouge);background:#faeceb}
+pre{background:var(--code);padding:14px 16px;border-radius:6px;overflow-x:auto;border:1px solid #e2ddcf;font-size:.93em}code{font-family:"Fira Code",Consolas,monospace}
+p code,li code{background:var(--code);padding:2px 5px;border-radius:3px}table{border-collapse:collapse;margin:12px 0;width:100%}th,td{border:1px solid #d0d4dc;padding:6px 10px;text-align:left}th{background:var(--ulbleu);color:#fff}tr:nth-child(even){background:#f0f3f8}
+details.solution{background:#fffbe7;border:1px solid #e8c94a;border-radius:6px;margin:14px 0;padding:0}
+details.solution>summary{cursor:pointer;padding:10px 14px;background:#fef0b8;border-radius:6px 6px 0 0;font-weight:bold;color:#6b4a00;list-style:none}
+details.solution>summary::-webkit-details-marker{display:none}
+details.solution>summary::before{content:"▶ ";color:#a07800}details.solution[open]>summary::before{content:"▼ "}
+details.solution[open]>summary{border-bottom:1px solid #e8c94a}details.solution .content{padding:12px 16px}
+.exercice{background:#fff;border-radius:6px;padding:16px 20px;margin:20px 0;border:1px solid #d8dce3;box-shadow:0 1px 3px rgba(0,0,0,.04)}.exercice h3{margin-top:0}
+.badge{display:inline-block;background:var(--ulor);color:#fff;padding:2px 8px;border-radius:10px;font-size:.78em;margin-left:8px;vertical-align:middle}.badge.time{background:#006642}
+.toolbar{text-align:right;margin:10px 0}.toolbar button{background:var(--ulbleu);color:#fff;border:none;padding:8px 14px;border-radius:4px;cursor:pointer;font-size:.92em}.toolbar button:hover{background:#00549b}
+footer{text-align:center;padding:24px;color:#666;font-size:.9em}
+</style>
+</head>
+<body>
+<header>
+  <h1>TP 4 — Mesure de K (terrain)</h1>
+  <div class="sub">GAE-3007 · Drainage · Chapitre 4 : Conductivité hydraulique saturée</div>
+  <div class="meta">Université Laval · Prof. Silvio J. Gumiere · Durée : 1 h · Environnement : R</div>
+</header>
+
+<main>
+
+<div class="toolbar">
+  <button onclick="document.querySelectorAll('details.solution').forEach(d=>d.open=true)">Afficher toutes les solutions</button>
+  <button onclick="document.querySelectorAll('details.solution').forEach(d=>d.open=false)">Masquer toutes les solutions</button>
+</div>
+
+<div class="box objectifs">
+<strong>Objectifs pédagogiques</strong>
+<ul>
+  <li>Analyser les données brutes de la méthode du <b>trou à la tarière</b> (auger-hole) et appliquer la formule d'Ernst.</li>
+  <li>Analyser les données brutes de la méthode du <b>trou à la tarière inverse</b> (Porchet) et appliquer la formule d'infiltration.</li>
+  <li>Ajuster une droite (régression) pour extraire \(K\) des pentes.</li>
+  <li>Caractériser statistiquement la variabilité de \(K\) sur un champ.</li>
+</ul>
+</div>
+
+<div class="box pre">
+<strong>Prérequis R</strong>
+<pre><code>library(tidyverse)</code></pre>
+</div>
+
+<div class="box context">
+<strong>Équations</strong>
+<p><b>Ernst</b> (trou à la tarière, nappe présente) :</p>
+\[
+K = \frac{C}{y_0}\cdot \frac{\Delta y}{\Delta t}
+\]
+<p>avec \(C\) un coefficient géométrique fonction de \(y_0, h_0, r, S\) (profondeur imperméable) — environ 0,74 \(r/h_0\) pour les dispositifs standards.</p>
+<p><b>Porchet inverse</b> (sol non saturé, eau descend) :</p>
+\[
+K = \frac{r}{2}\cdot\frac{\ln\!\left[(2h_1+r)/(2h_2+r)\right]}{t_2 - t_1}
+\]
+<p>où \(r\) est le rayon du trou, \(h_1\) et \(h_2\) les hauteurs d'eau aux temps \(t_1\) et \(t_2\).</p>
+</div>
+
+<!-- EX 1 -->
+<div class="exercice">
+<h3>Exercice 1 — Auger-hole : ajustement Ernst <span class="badge time">15 min</span></h3>
+<p>Données brutes d'un essai (nappe stabilisée à 1,15 m ; trou de \(r = 0{,}04\) m, \(h_0 = 0{,}90\) m, \(y_0 = 0{,}40\) m sous le niveau statique ; imperméable à \(S = 2{,}0\) m sous le fond du trou).</p>
+<pre><code>ergo_data <- tibble(
+  t_min = c(0, 0.5, 1, 2, 3, 4, 6, 8, 10),
+  y_cm  = c(40, 37, 34, 30, 27, 24, 20, 17, 14)
+)</code></pre>
+<ol>
+  <li>Tracez \(y(t)\) et \(\ln(y/y_0)\) en fonction de \(t\).</li>
+  <li>Par régression linéaire, estimez \(\dfrac{1}{y_0}\dfrac{\Delta y}{\Delta t}\) sur les premières 4 minutes (méthode CPVQ).</li>
+  <li>Calculez \(K\) avec \(C = 0{,}74\,r/h_0\).</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>r  <- 0.04
+h0 <- 0.90
+y0 <- 0.40
+S  <- 2.0
+
+ergo_data <- tibble(
+  t_min = c(0, 0.5, 1, 2, 3, 4, 6, 8, 10),
+  y_cm  = c(40, 37, 34, 30, 27, 24, 20, 17, 14)
+) |> mutate(y_m = y_cm/100)
+
+fit <- lm(y_m ~ t_min, data = ergo_data |> filter(t_min <= 4))
+dy_dt_min <- coef(fit)[2]                    # m/min
+dy_dt <- dy_dt_min * 1440                    # m/j
+cat(sprintf("dy/dt = %.4f m/j\n", dy_dt))
+
+# Coefficient géométrique approché
+C <- 0.74 * r / h0
+K <- C / y0 * abs(dy_dt)
+cat(sprintf("K = %.3f m/j\n", K))
+
+library(ggplot2)
+ggplot(ergo_data, aes(t_min, y_m)) +
+  geom_point(size=3, color="#003e71") +
+  geom_smooth(method="lm", se=FALSE, formula = y~x, color="#961428") +
+  labs(title = "Méthode auger-hole — régression Ernst",
+       x = "t (min)", y = "y (m)") + theme_minimal()</code></pre>
+<p>On obtient typiquement \(K \approx 0{,}4\)–0,6 m/j pour ces données (loam). Attention : utiliser la régression uniquement sur la partie linéaire (4 premières minutes).</p>
+</div>
+</details>
+</div>
+
+<!-- EX 2 -->
+<div class="exercice">
+<h3>Exercice 2 — Porchet : essai inverse <span class="badge time">15 min</span></h3>
+<p>Sol non saturé, nappe absente. On remplit un trou (\(r = 0{,}04\) m) d'eau jusqu'à 0,60 m, et on mesure la baisse :</p>
+<pre><code>porchet <- tibble(
+  t_min = c(0, 5, 10, 15, 20, 30, 45, 60),
+  h_cm  = c(60, 54, 48, 42, 38, 30, 22, 16)
+)</code></pre>
+<ol>
+  <li>Pour chaque paire consécutive \((t_i, h_i)\), calculez \(K_i\) via Porchet.</li>
+  <li>Moyennez \(K\) et tracez \(\ln(2h+r)\) vs \(t\) (doit être linéaire).</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>r <- 0.04
+porchet <- tibble(
+  t_min = c(0, 5, 10, 15, 20, 30, 45, 60),
+  h_cm  = c(60, 54, 48, 42, 38, 30, 22, 16)
+) |> mutate(h_m = h_cm/100)
+
+porchet <- porchet |>
+  mutate(K_int = (r/2) *
+           (log((2*lag(h_m)+r)/(2*h_m+r))) /
+           ((t_min - lag(t_min))/1440))   # converti min → j
+cat(sprintf("K moyen (Porchet) = %.3f m/j\n", mean(porchet$K_int, na.rm=TRUE)))
+
+# Régression sur ln(2h+r) vs t
+fit <- lm(log(2*h_m+r) ~ t_min, data = porchet)
+pente <- -coef(fit)[2] * 1440                  # 1/j
+K_reg <- r/2 * pente
+cat(sprintf("K (régression) = %.3f m/j\n", K_reg))
+
+ggplot(porchet, aes(t_min, log(2*h_m+r))) +
+  geom_point(size=3, color="#006642") +
+  geom_smooth(method="lm", se=FALSE, formula = y~x, color="#961428") +
+  labs(title = "Porchet : ln(2h+r) vs temps",
+       x = "t (min)", y = "ln(2h+r)") + theme_minimal()</code></pre>
+<p>Les valeurs individuelles varient légèrement autour de la moyenne ; la régression sur la série complète est plus robuste.</p>
+</div>
+</details>
+</div>
+
+<!-- EX 3 -->
+<div class="exercice">
+<h3>Exercice 3 — Comparaison : Ernst vs Porchet sur le même champ <span class="badge time">10 min</span></h3>
+<p>Dans la réalité, les deux méthodes donnent des valeurs voisines mais pas identiques : Ernst intègre \(K_h\), Porchet intègre \(K_v\).</p>
+<ol>
+  <li>Comparez vos deux estimations.</li>
+  <li>Estimez un ratio \(K_h/K_v\).</li>
+  <li>Que recommander pour le design : moyenne géométrique, arithmétique, ou rester avec Ernst seul ?</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>K_Ernst  <- 0.48
+K_Porchet <- 0.23
+ratio <- K_Ernst / K_Porchet
+cat(sprintf("Kh/Kv ~ %.2f\n", ratio))
+
+K_geom <- sqrt(K_Ernst * K_Porchet)
+cat(sprintf("K géométrique = %.3f m/j\n", K_geom))</code></pre>
+<p><b>Analyse :</b></p>
+<ul>
+  <li>Ratio Kh/Kv ~2 typique des loams structurés.</li>
+  <li>Pour l'espacement (Hooghoudt), on privilégie \(K_h\) (Ernst).</li>
+  <li>Pour la recharge / percolation, on privilégie \(K_v\) (Porchet).</li>
+  <li>La moyenne géométrique est une approximation acceptable pour un modèle isotrope simplifié.</li>
+</ul>
+</div>
+</details>
+</div>
+
+<!-- EX 4 -->
+<div class="exercice">
+<h3>Exercice 4 — Statistiques spatiales de K <span class="badge time">12 min</span></h3>
+<p>Vous avez 25 essais à la tarière sur un plan de 30 ha (données simulées log-normales).</p>
+<pre><code>set.seed(1)
+K_field <- exp(rnorm(25, mean = log(0.6), sd = 0.7))</code></pre>
+<ol>
+  <li>Testez la log-normalité (QQ-plot).</li>
+  <li>Calculez moyenne arithmétique, géométrique, médiane et les percentiles 10/50/90.</li>
+  <li>Quelle valeur retenir pour dimensionner le plan ? Justifiez.</li>
+</ol>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>set.seed(1)
+K_field <- exp(rnorm(25, mean = log(0.6), sd = 0.7))
+
+stats <- tibble(
+  arith = mean(K_field),
+  geom  = exp(mean(log(K_field))),
+  median= median(K_field),
+  p10   = quantile(K_field, 0.10),
+  p90   = quantile(K_field, 0.90)
+)
+print(stats)
+
+qqnorm(log(K_field), main = "QQ-plot ln(K)")
+qqline(log(K_field), col = "#961428")
+
+ggplot(data.frame(K = K_field), aes(K)) +
+  geom_histogram(bins = 10, fill = "#00549b", color = "white") +
+  scale_x_log10() +
+  labs(title = "Distribution log-normale de K",
+       x = "K (m/j, log)", y = "Fréquence") + theme_minimal()</code></pre>
+<p><b>Recommandation :</b> moyenne géométrique ou médiane comme valeur représentative pour le bloc; utiliser le 10<sup>e</sup> percentile pour un design prudent (drainage garanti dans 90 % des cellules du plan).</p>
+</div>
+</details>
+</div>
+
+<!-- EX 5 -->
+<div class="exercice">
+<h3>Exercice 5 — Propagation d'incertitude sur L <span class="badge time">8 min</span></h3>
+<p>À partir de la distribution de \(K\) de l'exercice 4, propagez l'incertitude sur l'espacement L de Hooghoudt (Monte-Carlo, \(q=10\) mm/j, \(D_0=2\) m, \(H=0{,}4\) m, \(r_e=0{,}08\) m).</p>
+
+<details class="solution"><summary>Solution</summary>
+<div class="content">
+<pre><code>d_e <- function(L, D0, re){ D0 / (1 + (8*D0)/(pi*L) * log(D0/re)) }
+
+solve_L <- function(K, q, D0, H, re){
+  L <- 20
+  for (i in 1:30){
+    de <- d_e(L, D0, re)
+    L_new <- sqrt( (8*K*de*H + 4*K*H^2) / q )
+    if (abs(L_new-L) < 1e-3) break
+    L <- L_new
+  }
+  L_new
+}
+
+L_samples <- sapply(K_field, solve_L, q=0.010, D0=2, H=0.4, re=0.08)
+
+cat(sprintf("L moyen = %.1f m (sd = %.1f)\n", mean(L_samples), sd(L_samples)))
+cat(sprintf("P10 — P90 : %.1f — %.1f m\n",
+            quantile(L_samples,0.10), quantile(L_samples,0.90)))
+
+ggplot(data.frame(L = L_samples), aes(L)) +
+  geom_histogram(bins = 10, fill = "#006642", color = "white") +
+  labs(title = "Distribution de L (Monte-Carlo)",
+       x = "L (m)", y = "Fréquence") + theme_minimal()</code></pre>
+<p>On obtient une plage type 15–40 m. Choisir \(L \approx P_{10}\) pour prendre en compte la variabilité spatiale.</p>
+</div>
+</details>
+</div>
+
+<h2>Questions de synthèse</h2>
+<ol>
+  <li>Quels sont les biais systématiques de la méthode du trou à la tarière (smearing, anisotropie, proximité de l'imperméable) ?</li>
+  <li>Pourquoi Porchet surestime-t-elle souvent \(K\) dans les sols fissurés ?</li>
+  <li>Combien de tests par hectare recommande la littérature pour un champ de 40 ha ?</li>
+</ol>
+
+<div class="box note">
+<strong>Livrable attendu</strong>
+<p>Script R, QQ-plot log-normal, tableau comparatif des moyennes, et valeur de K retenue avec justification pour le plan de design.</p>
+</div>
+
+</main>
+
+<footer>GAE-3007 Drainage — TP 4 · Université Laval · Prof. Silvio J. Gumiere</footer>
+
+</body>
+</html>
