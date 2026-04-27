@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>TP Jour 2 — Mouvement d'eau en sol non saturé</title>
+<script>MathJax = {tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+<style>
+:root { --bleuF:#1a5276; --bleuM:#2980b9; --bleuL:#d6eaf8; --vertF:#1e8449; --vertL:#d5f5e3; --orangeF:#e67e22; --orangeL:#fdebd0; --grisL:#f2f3f4; --violetF:#6c3483; }
+* { box-sizing: border-box; }
+body { font-family: Georgia, "Times New Roman", serif; max-width: 900px; margin: 2em auto; padding: 0 1.5em; line-height: 1.6; color: #222; background: #fafafa; }
+header { border-bottom: 3px solid var(--bleuF); padding-bottom: 1em; margin-bottom: 2em; }
+header h1 { color: var(--bleuF); margin-bottom: 0.2em; }
+header .sub { color: #555; font-style: italic; }
+header .auth { color: #888; font-size: 0.9em; margin-top: 0.5em; }
+h2 { color: var(--bleuF); border-bottom: 2px solid var(--bleuM); padding-bottom: 0.3em; margin-top: 2em; }
+h3 { color: var(--vertF); margin-top: 1.5em; }
+.box { border: 2px solid; border-radius: 6px; padding: 0.8em 1em; margin: 1.2em 0; }
+.box .box-title { font-weight: bold; font-size: 1.05em; margin: -0.8em -1em 0.6em -1em; padding: 0.5em 1em; border-bottom: 1px solid; }
+.obj { border-color: var(--bleuM); background: var(--bleuL); }
+.obj .box-title { background: var(--bleuF); color: white; border-color: var(--bleuM); }
+.note { border-color: var(--bleuM); background: var(--bleuL); }
+.note .box-title { color: var(--bleuF); border-color: var(--bleuM); }
+.warn { border-color: var(--orangeF); background: var(--orangeL); }
+.warn .box-title { color: var(--orangeF); border-color: var(--orangeF); }
+.quest { border-color: var(--violetF); background: white; }
+.quest .box-title { color: var(--violetF); border-color: var(--violetF); }
+.result { border-color: var(--vertF); background: var(--vertL); }
+.result .box-title { color: var(--vertF); border-color: var(--vertF); }
+details.code { margin: 1em 0; background: var(--grisL); border: 1px solid #bbb; border-radius: 6px; overflow: hidden; }
+details.code summary { cursor: pointer; padding: 0.5em 1em; background: var(--bleuF); color: white; font-family: sans-serif; font-size: 0.9em; font-weight: bold; user-select: none; list-style: none; }
+details.code summary::before { content: "▶ "; display: inline-block; transition: transform 0.2s; }
+details.code[open] summary::before { transform: rotate(90deg); }
+details.code summary:hover { background: var(--bleuM); }
+details.code pre { margin: 0; padding: 1em; overflow-x: auto; background: var(--grisL); font-size: 0.85em; font-family: Consolas, Monaco, monospace; }
+table { border-collapse: collapse; margin: 1em auto; font-size: 0.95em; }
+table caption { font-style: italic; margin-bottom: 0.5em; color: #555; }
+th, td { padding: 0.4em 0.8em; border: 1px solid #ccc; }
+th { background: var(--bleuL); color: var(--bleuF); }
+tr:nth-child(even) td { background: #f8f9fa; }
+.controls { position: sticky; top: 0; z-index: 100; background: white; padding: 0.5em; margin-bottom: 1em; border-bottom: 1px solid #ddd; text-align: right; font-family: sans-serif; font-size: 0.85em; }
+.controls button { background: var(--bleuF); color: white; border: none; padding: 0.4em 0.9em; border-radius: 4px; cursor: pointer; margin-left: 0.5em; }
+.controls button:hover { background: var(--bleuM); }
+.nav { text-align: center; margin: 2em 0; font-family: sans-serif; }
+.nav a { color: var(--bleuF); text-decoration: none; padding: 0.3em 0.8em; border: 1px solid var(--bleuM); border-radius: 4px; margin: 0 0.2em; display: inline-block; }
+.nav a:hover { background: var(--bleuL); }
+ul, ol { padding-left: 1.5em; } ul li, ol li { margin-bottom: 0.3em; }
+@media print { .controls, .nav { display: none; } details.code { page-break-inside: avoid; } details.code[open] pre { max-height: none; } }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <span>Code R : </span>
+  <button onclick="document.querySelectorAll('details.code').forEach(d=>d.open=true)">Tout afficher</button>
+  <button onclick="document.querySelectorAll('details.code').forEach(d=>d.open=false)">Tout masquer</button>
+</div>
+
+<header>
+  <h1>TP Jour 2 — Mouvement d'eau en sol non saturé</h1>
+  <div class="sub">Propriétés hydrodynamiques et infiltration</div>
+  <div class="auth">Prof. Silvio José Gumiere</div>
+</header>
+
+<div class="box obj">
+  <div class="box-title">Objectifs du TP</div>
+  <ol>
+    <li>Tracer et analyser les courbes de rétention $\theta(h)$ avec le modèle van Genuchten</li>
+    <li>Calculer la conductivité hydraulique $K(h)$ avec le modèle de Mualem</li>
+    <li>Simuler l'infiltration avec le modèle Green-Ampt en R</li>
+  </ol>
+</div>
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  <strong>Prérequis :</strong> R/RStudio, notions de physique des sols, hydrogéologie. Durée estimée : 90 minutes.
+</div>
+
+<h2>Exercice 1 : Courbe de rétention van Genuchten (30 min)</h2>
+
+<p>La courbe de rétention en eau du sol décrit la relation entre la teneur en eau volumique $\theta$ et le potentiel matriciel $h$. Le modèle de van Genuchten est l'un des modèles les plus utilisés.</p>
+
+<h3>Étape 1 : Paramètres des sols marocains</h3>
+<p>Trois sols types sont considérés : sable du Souss, limon du Saïss et argile du Gharb.</p>
+
+<table>
+<caption>Paramètres van Genuchten pour trois sols marocains</caption>
+<thead><tr><th>Sol</th><th>$\theta_r$</th><th>$\theta_s$</th><th>$\alpha$ (cm$^{-1}$)</th><th>$n$</th></tr></thead>
+<tbody>
+<tr><td>Sable (Souss)</td><td>0.05</td><td>0.40</td><td>0.025</td><td>2.68</td></tr>
+<tr><td>Limon (Saïss)</td><td>0.06</td><td>0.45</td><td>0.008</td><td>1.89</td></tr>
+<tr><td>Argile (Gharb)</td><td>0.10</td><td>0.50</td><td>0.003</td><td>1.25</td></tr>
+</tbody>
+</table>
+
+<p>Étudions d'abord le sable du Souss.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Parametres van Genuchten - Sable Souss
+theta_r_sable <- 0.05
+theta_s_sable <- 0.40
+alpha_sable <- 0.025
+n_sable <- 2.68
+
+# Calcul de m
+m_sable <- 1 - 1 / n_sable
+
+# Fonction van Genuchten pour theta(h)
+vg_theta <- function(h, theta_r, theta_s, alpha, n) {
+  m <- 1 - 1 / n
+  Se <- 1 / (1 + (alpha * abs(h)) ^ n) ^ m
+  theta <- theta_r + (theta_s - theta_r) * Se
+  return(theta)
+}
+
+# Matrice potentiels matriciels (h de 0 a -15000 cm = pF 6)
+h_sable <- seq(0, -15000, by = -100)
+
+# Calcul theta pour tous les h
+theta_sable <- vg_theta(h_sable, theta_r_sable, theta_s_sable,
+                        alpha_sable, n_sable)
+
+# Affichage
+cat("Sable Souss - Courbe de retention\n")
+resultat_sable <- data.frame(
+  h_cm = h_sable[seq(1, length(h_sable), by = 50)],
+  theta = theta_sable[seq(1, length(h_sable), by = 50)]
+)
+print(head(resultat_sable, 10))</code></pre></details>
+
+<h3>Étape 2 : Calcul pour les trois sols</h3>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Parametres van Genuchten - les 3 sols
+sols <- data.frame(
+  nom = c("Sable (Souss)", "Limon (Saiss)", "Argile (Gharb)"),
+  theta_r = c(0.05, 0.06, 0.10),
+  theta_s = c(0.40, 0.45, 0.50),
+  alpha = c(0.025, 0.008, 0.003),
+  n = c(2.68, 1.89, 1.25)
+)
+
+# Calcul pour tous les h
+h_values <- seq(0, -15000, by = -100)
+
+# Initialiser les resultats
+theta_sable <- numeric(length(h_values))
+theta_limon <- numeric(length(h_values))
+theta_argile <- numeric(length(h_values))
+
+# Boucle sur les 3 sols
+for (i in 1:length(h_values)) {
+  theta_sable[i] <- vg_theta(h_values[i], 0.05, 0.40, 0.025, 2.68)
+  theta_limon[i] <- vg_theta(h_values[i], 0.06, 0.45, 0.008, 1.89)
+  theta_argile[i] <- vg_theta(h_values[i], 0.10, 0.50, 0.003, 1.25)
+}
+
+cat("Courbes de retention calculees pour 3 sols\n")</code></pre></details>
+
+<h3>Étape 3 : Visualisation graphique des courbes de rétention</h3>
+<p>Tracez les trois courbes sur un même graphique.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Graphique des courbes de retention
+par(mar = c(5, 5, 3, 2))
+plot(h_values, theta_sable, type = "l", lwd = 2.5,
+     col = "orange", xlab = "Potentiel matriciel h (cm)",
+     ylab = "Teneur en eau volumique theta (m3/m3)",
+     main = "Courbes de retention van Genuchten\n(Sols marocains)",
+     xlim = c(-15000, 0), ylim = c(0, 0.55))
+lines(h_values, theta_limon, type = "l", lwd = 2.5, col = "brown")
+lines(h_values, theta_argile, type = "l", lwd = 2.5, col = "darkblue")
+legend("topright",
+       legend = c("Sable (Souss)", "Limon (Saiss)", "Argile (Gharb)"),
+       col = c("orange", "brown", "darkblue"), lwd = 2.5)
+grid(NA, NULL, lwd = 1, col = "gray70")
+
+# Marquer les points CC et PF
+abline(v = -330, col = "green", lty = 2, lwd = 1.5)
+abline(v = -15000, col = "red", lty = 2, lwd = 1.5)
+text(-2000, 0.52, "CC", col = "green", cex = 1.2)
+text(-14000, 0.52, "PF", col = "red", cex = 1.2)</code></pre></details>
+
+<h3>Étape 4 : Capacité au champ et point de flétrissement</h3>
+<p>La capacité au champ (CC) correspond à $h = -330$ cm (pF 2.5), et le point de flétrissement permanent (PF) à $h = -15000$ cm (pF 4.2).</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Calcul theta aux points de reference
+CC_h <- -330    # capacite au champ
+PF_h <- -15000  # point de fletrissement
+
+# Fonction utilitaire
+calc_theta_reference <- function(h_val, nom_sol, theta_r, theta_s,
+                                 alpha, n) {
+  theta <- vg_theta(h_val, theta_r, theta_s, alpha, n)
+  return(theta)
+}
+
+# Tableau des resultats pour les 3 sols
+resultats_ref <- data.frame(
+  Sol = c("Sable (Souss)", "Limon (Saiss)", "Argile (Gharb)"),
+  theta_CC = c(
+    calc_theta_reference(CC_h, "Sable", 0.05, 0.40, 0.025, 2.68),
+    calc_theta_reference(CC_h, "Limon", 0.06, 0.45, 0.008, 1.89),
+    calc_theta_reference(CC_h, "Argile", 0.10, 0.50, 0.003, 1.25)
+  ),
+  theta_PF = c(
+    calc_theta_reference(PF_h, "Sable", 0.05, 0.40, 0.025, 2.68),
+    calc_theta_reference(PF_h, "Limon", 0.06, 0.45, 0.008, 1.89),
+    calc_theta_reference(PF_h, "Argile", 0.10, 0.50, 0.003, 1.25)
+  ),
+  Zr = c(1.2, 1.0, 0.8)
+)
+
+# Calcul RFU (Reserve Facile d'Utilisation)
+resultats_ref$RFU_mm <- (resultats_ref$theta_CC - resultats_ref$theta_PF) *
+                         resultats_ref$Zr * 1000
+
+cat("\nCapacite au champ et point de fletrissement\n")
+print(resultats_ref)
+
+# RFU pour differentes profondeurs
+Zr_test <- seq(0.5, 2.0, by = 0.5)
+for (sol_idx in 1:3) {
+  cat(resultats_ref$Sol[sol_idx], ":\n")
+  for (zr in Zr_test) {
+    rfu <- (resultats_ref$theta_CC[sol_idx] -
+            resultats_ref$theta_PF[sol_idx]) * zr * 1000
+    cat("  Zr =", zr, "m : RFU =", round(rfu, 0), "mm\n")
+  }
+}</code></pre></details>
+
+<div class="box result">
+  <div class="box-title">Résultat attendu</div>
+  <strong>Observations :</strong>
+  <ul>
+    <li>Le sable retient moins d'eau que le limon et l'argile</li>
+    <li>L'argile a la plus grande RFU, donc la meilleure capacité de stockage</li>
+    <li>Les sols fins (argile, limon) ont une pente plus douce (n plus bas)</li>
+  </ul>
+</div>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  <p><strong>Q1.1 :</strong> Quel sol retient le plus d'eau à pF 2.5 (CC) ? Expliquez en fonction de la granulométrie.</p>
+  <p><strong>Q1.2 :</strong> Pour un olivier avec Zr = 1.2 m cultivé sur limon, calculez la RFU. Comparez avec du sable.</p>
+</div>
+
+<h2>Exercice 2 : Conductivité hydraulique K(h) avec Mualem (20 min)</h2>
+<p>La conductivité hydraulique diminue rapidement lorsque le sol s'assèche. Le modèle de Mualem-van Genuchten relie K(h) aux propriétés de rétention.</p>
+
+<h3>Étape 1 : Modèle de Mualem</h3>
+<p>La saturation effective (Se) est définie par :</p>
+$$S_e = \frac{\theta - \theta_r}{\theta_s - \theta_r}$$
+
+<p>Et la conductivité hydraulique relative par :</p>
+$$K_r(S_e) = S_e^{l} \left[ 1 - \left(1 - S_e^{1/m}\right)^m \right]^2$$
+
+<p>où $l = 0.5$ est le paramètre de tortuosité et $K(h) = K_r(S_e) \times K_s$ (Ks = conductivité à saturation).</p>
+
+<h3>Étape 2 : Code R pour Mualem</h3>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Fonction Mualem-van Genuchten pour K(h)
+mualem_K <- function(h, theta_r, theta_s, alpha, n, Ks) {
+  m <- 1 - 1 / n
+
+  # Saturation effective
+  Se <- 1 / (1 + (alpha * abs(h)) ^ n) ^ m
+  Se <- pmax(Se, 0.001)
+
+  # Conductivite relative
+  l <- 0.5  # parametre de tortuosite
+  Kr <- Se ^ l * (1 - (1 - Se ^ (1 / m)) ^ m) ^ 2
+
+  # Conductivite hydraulique K(h)
+  K <- Kr * Ks
+
+  return(K)
+}
+
+# Parametres Ks (cm/h) pour les 3 sols
+sols_prop <- data.frame(
+  nom = c("Sable (Souss)", "Limon (Saiss)", "Argile (Gharb)"),
+  theta_r = c(0.05, 0.06, 0.10),
+  theta_s = c(0.40, 0.45, 0.50),
+  alpha = c(0.025, 0.008, 0.003),
+  n = c(2.68, 1.89, 1.25),
+  Ks = c(50.0, 2.5, 0.3)
+)
+
+# Calcul K(h) pour les 3 sols
+h_values <- seq(0, -15000, by = -100)
+
+K_sable <- mualem_K(h_values, 0.05, 0.40, 0.025, 2.68, 50.0)
+K_limon <- mualem_K(h_values, 0.06, 0.45, 0.008, 1.89, 2.5)
+K_argile <- mualem_K(h_values, 0.10, 0.50, 0.003, 1.25, 0.3)
+
+cat("Conductivite hydraulique K(h)\n")</code></pre></details>
+
+<h3>Étape 3 : Visualisation semi-logarithmique</h3>
+<p>Tracez les courbes de conductivité hydraulique en fonction du potentiel matriciel.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Graphique semi-logarithmique K vs h
+par(mar = c(5, 5, 3, 2))
+plot(h_values, K_sable, type = "l", lwd = 2.5,
+     col = "orange", xlab = "Potentiel matriciel h (cm)",
+     ylab = "Conductivite K (cm/h)",
+     main = "Conductivite hydraulique K(h) - echelle log\n(Mualem-van Genuchten)",
+     xlim = c(-15000, 0), ylim = c(0.0001, 100), log = "y")
+lines(h_values, K_limon, type = "l", lwd = 2.5, col = "brown")
+lines(h_values, K_argile, type = "l", lwd = 2.5, col = "darkblue")
+legend("topright",
+       legend = c("Sable (Souss, Ks=50)", "Limon (Saiss, Ks=2.5)",
+                  "Argile (Gharb, Ks=0.3)"),
+       col = c("orange", "brown", "darkblue"), lwd = 2.5)
+grid(NA, NULL, lwd = 1, col = "gray70")
+
+# Marquer la capacite au champ
+abline(v = -330, col = "green", lty = 2, lwd = 1.5)
+text(-2000, 50, "CC", col = "green", cex = 1.2)</code></pre></details>
+
+<div class="box warn">
+  <div class="box-title">Attention</div>
+  <strong>Observation importante :</strong> La conductivité du sable chute très vite quand h décroît (pente élevée). Cela explique pourquoi les sols sableux s'assèchent rapidement et nécessitent une irrigation fréquente.
+</div>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  <p><strong>Q2.1 :</strong> Comparez K(h) pour le sable et l'argile à h = -1000 cm. Quel sol draine mieux ?</p>
+  <p><strong>Q2.2 :</strong> Pourquoi la pente de K(h) est-elle plus douce pour l'argile ? Quel avantage pour l'irrigation ?</p>
+</div>
+
+<h2>Exercice 3 : Simulation de l'infiltration Green-Ampt (30 min)</h2>
+<p>Le modèle Green-Ampt décrit l'infiltration en fonction du temps et permet de déterminer le moment où le ruissellement commence (ponding time).</p>
+
+<h3>Étape 1 : Paramètres et équations Green-Ampt</h3>
+<p>Le modèle Green-Ampt suppose un front d'humidification net séparant le sol saturé du sol initialement sec. La vitesse d'infiltration instantanée est :</p>
+$$f(t) = K_s \left[ 1 + \frac{\psi_f \Delta\theta}{F(t)} \right]$$
+
+<p>où $F(t)$ est l'infiltration cumulée (mm), $\psi_f$ le potentiel matriciel au front d'humidification (cm), et $\Delta\theta$ le changement de teneur en eau au front.</p>
+
+<table>
+<caption>Paramètres Green-Ampt pour limon du Saïss</caption>
+<thead><tr><th>Paramètre</th><th>Valeur</th></tr></thead>
+<tbody>
+<tr><td>$K_s$ (conductivité saturée)</td><td>2.5 cm/h = 25 mm/h</td></tr>
+<tr><td>$\psi_f$ (potentiel au front)</td><td>-10 cm</td></tr>
+<tr><td>$\theta_i$ (humidité initiale)</td><td>0.15 m$^3$/m$^3$</td></tr>
+<tr><td>$\theta_s$ (humidité saturation)</td><td>0.45 m$^3$/m$^3$</td></tr>
+<tr><td>$\Delta\theta$</td><td>0.30 m$^3$/m$^3$</td></tr>
+</tbody>
+</table>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Parametres Green-Ampt (limon Saiss)
+Ks_cmh <- 2.5        # cm/h
+Ks_mmh <- 25         # mm/h
+psi_f <- -10         # cm
+theta_i <- 0.15      # teneur initiale
+theta_s <- 0.45      # teneur saturation
+Delta_theta <- theta_s - theta_i  # 0.30
+
+# Intensite de pluie
+I_mmh <- 30          # mm/h (pluie forte)
+
+cat("Parametres Green-Ampt\n")
+cat("Ks:", Ks_mmh, "mm/h\n")
+cat("psi_f:", psi_f, "cm\n")
+cat("Delta_theta:", Delta_theta, "\n")
+cat("Intensite pluie:", I_mmh, "mm/h\n")</code></pre></details>
+
+<h3>Étape 2 : Algorithme de résolution itérative</h3>
+<p>On résout numériquement F(t) par une boucle temporelle.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Resolution Green-Ampt par iteration
+
+# Fonction vitesse d'infiltration f(t)
+f_infiltration <- function(F, Ks, psi_f, Delta_theta) {
+  if (F < 0.001) F <- 0.001
+  f <- Ks + (Ks * psi_f * Delta_theta) / F
+  return(f)
+}
+
+# Simulation temporelle
+dt <- 1  # pas de temps en minutes
+t_max <- 120
+time <- seq(0, t_max, by = dt)
+
+# Initialisation des resultats
+n_steps <- length(time)
+F_cumul <- numeric(n_steps)
+f_inst <- numeric(n_steps)
+ponding_time <- NA
+
+# Boucle temporelle
+F_cumul[1] <- 0
+for (i in 2:n_steps) {
+  dF_mm <- (I_mmh / 60) * dt
+
+  f_prev <- f_infiltration(pmax(F_cumul[i-1], 0.1),
+                           Ks_mmh, psi_f, Delta_theta)
+
+  if (I_mmh > f_prev && is.na(ponding_time)) {
+    ponding_time <- time[i-1]
+  }
+
+  if (I_mmh > f_infiltration(F_cumul[i-1], Ks_mmh, psi_f,
+                             Delta_theta)) {
+    F_cumul[i] <- F_cumul[i-1]
+  } else {
+    F_cumul[i] <- F_cumul[i-1] + dF_mm
+    if (F_cumul[i] < 0) F_cumul[i] <- 0
+  }
+
+  f_inst[i] <- f_infiltration(pmax(F_cumul[i], 0.1),
+                              Ks_mmh, psi_f, Delta_theta)
+}
+
+cat("Simulation Green-Ampt realisee\n")
+cat("Ponding time:", round(ponding_time, 1), "min\n")
+cat("Infiltration a t=120 min:", round(F_cumul[n_steps], 1), "mm\n")</code></pre></details>
+
+<h3>Étape 3 : Graphiques de résultats</h3>
+<p>Visualisez l'infiltration cumulée et la vitesse d'infiltration instantanée.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Graphiques resultats infiltration
+par(mfrow = c(1, 2), mar = c(5, 5, 3, 2))
+
+# Graphique 1: Infiltration cumulative F(t)
+plot(time, F_cumul, type = "l", lwd = 2.5, col = "darkblue",
+     xlab = "Temps (min)", ylab = "Infiltration cumulative (mm)",
+     main = "Infiltration cumulative F(t)")
+abline(v = ponding_time, col = "red", lty = 2, lwd = 1.5)
+grid(NA, NULL, lwd = 1, col = "gray70")
+
+# Graphique 2: Vitesse d'infiltration f(t)
+plot(time, f_inst, type = "l", lwd = 2.5, col = "darkorange",
+     xlab = "Temps (min)", ylab = "Vitesse infiltration (mm/h)",
+     main = "Capacite d'infiltration f(t)")
+abline(h = I_mmh, col = "green", lty = 2, lwd = 1.5)
+abline(h = Ks_mmh, col = "blue", lty = 3, lwd = 1.5)
+grid(NA, NULL, lwd = 1, col = "gray70")
+
+par(mfrow = c(1, 1))</code></pre></details>
+
+<h3>Étape 4 : Ruissellement et bilan hydrique</h3>
+<p>Calculez le ruissellement cumulé et le bilan hydrique.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Ruissellement cumule
+Pluie_cumul <- (I_mmh / 60) * time  # mm
+Ruissl_cumul <- Pluie_cumul - F_cumul
+Ruissl_cumul <- pmax(0, Ruissl_cumul)
+
+# Tableau bilan
+bilan_indices <- seq(1, n_steps, by = 12)
+bilan <- data.frame(
+  Temps_min = time[bilan_indices],
+  Pluie_mm = round(Pluie_cumul[bilan_indices], 1),
+  Infiltr_mm = round(F_cumul[bilan_indices], 1),
+  Ruissl_mm = round(Ruissl_cumul[bilan_indices], 1),
+  f_mmh = round(f_inst[bilan_indices], 1)
+)
+
+cat("\nBilan infiltration/ruissellement (Intensite pluie = 30 mm/h)\n")
+print(bilan)
+
+# Totaux
+cat("\nTotaux a t = 120 min:\n")
+cat("Pluie cumulative:", round(Pluie_cumul[n_steps], 1), "mm\n")
+cat("Infiltration:", round(F_cumul[n_steps], 1), "mm\n")
+cat("Ruissellement:", round(Ruissl_cumul[n_steps], 1), "mm\n")
+cat("Ratio ruissellement:", round(100 * Ruissl_cumul[n_steps] /
+                                   Pluie_cumul[n_steps], 1), "%\n")</code></pre></details>
+
+<div class="box result">
+  <div class="box-title">Résultat attendu</div>
+  <strong>Résultats attendus (Limon Saïss, I = 30 mm/h) :</strong>
+  <ul>
+    <li>Ponding time $\approx$ 5–8 minutes</li>
+    <li>Infiltration cumulative à 120 min $\approx$ 40–50 mm</li>
+    <li>Ruissellement cumulé à 120 min $\approx$ 10–20 mm</li>
+  </ul>
+</div>
+
+<h3>Étape 5 : Analyse de sensibilité</h3>
+<p>Étudiez comment la ponding time change avec l'intensité de pluie.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Analyse de sensibilite : intensites differentes
+intensites <- c(10, 20, 30, 40, 50)
+resultats_sensibilite <- data.frame(
+  Intensite_mmh = intensites,
+  Ponding_time_min = numeric(length(intensites)),
+  Infiltr_120min = numeric(length(intensites))
+)
+
+for (idx in 1:length(intensites)) {
+  I_test <- intensites[idx]
+  F_test <- numeric(n_steps)
+  F_test[1] <- 0
+  ponding_test <- NA
+
+  for (i in 2:n_steps) {
+    dF <- (I_test / 60) * dt
+    f_calc <- f_infiltration(pmax(F_test[i-1], 0.1),
+                             Ks_mmh, psi_f, Delta_theta)
+
+    if (I_test > f_calc && is.na(ponding_test)) {
+      ponding_test <- time[i-1]
+    }
+
+    if (I_test > f_calc) {
+      F_test[i] <- F_test[i-1]
+    } else {
+      F_test[i] <- F_test[i-1] + dF
+    }
+  }
+
+  resultats_sensibilite$Ponding_time_min[idx] <- if (is.na(ponding_test))
+    Inf else ponding_test
+  resultats_sensibilite$Infiltr_120min[idx] <- F_test[n_steps]
+}
+
+cat("\nAnalyse de sensibilite\n")
+print(resultats_sensibilite)</code></pre></details>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  <p><strong>Q3.1 :</strong> Qu'est-ce que le ponding time ? Pourquoi est-il important pour prédire le ruissellement ?</p>
+  <p><strong>Q3.2 :</strong> Que se passe-t-il si l'intensité de pluie double (60 mm/h au lieu de 30 mm/h) ? Le ponding time change-t-il ? Pourquoi ?</p>
+  <p><strong>Q3.3 :</strong> Sur quel type de sol (sable vs limon vs argile) le ruissellement est-il le plus élevé pour une pluie de 30 mm/h ? Expliquez.</p>
+</div>
+
+<h2>Résumé et conclusion</h2>
+<p>Dans ce TP, vous avez :</p>
+<ol>
+  <li>Caractérisé la rétention en eau des sols marocains avec le modèle van Genuchten</li>
+  <li>Quantifié la conductivité hydraulique K(h) en fonction du potentiel matriciel</li>
+  <li>Simulé l'infiltration et prédit le ponding time avec Green-Ampt</li>
+</ol>
+
+<p><strong>Points clés à retenir :</strong></p>
+<ul>
+  <li>Les sols fins (argile, limon) retiennent plus d'eau mais drainent plus lentement</li>
+  <li>La conductivité hydraulique varie sur plusieurs ordres de grandeur avec le potentiel</li>
+  <li>Le ponding time dépend de Ks, de l'intensité de pluie et des propriétés hydrodynamiques du sol</li>
+  <li>La prédiction précise du ruissellement nécessite de bien caractériser les sols</li>
+</ul>
+
+<div class="nav">
+  <a href="TP01_Irrigation_Precision.html">← TP 1</a>
+  <a href="index.html">Accueil</a>
+  <a href="TP03_Variabilite_Spatiale_R.html">TP 3 →</a>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body>
+</html>

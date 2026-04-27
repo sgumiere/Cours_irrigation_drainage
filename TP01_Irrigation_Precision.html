@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>TP Jour 1 — Irrigation de Précision</title>
+<script>
+MathJax = {tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+<style>
+:root {
+  --bleuF: #1a5276; --bleuM: #2980b9; --bleuL: #d6eaf8;
+  --vertF: #1e8449; --vertL: #d5f5e3;
+  --orangeF: #e67e22; --orangeL: #fdebd0;
+  --grisL: #f2f3f4; --violetF: #6c3483;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: "Georgia", "Times New Roman", serif;
+  max-width: 900px; margin: 2em auto; padding: 0 1.5em;
+  line-height: 1.6; color: #222; background: #fafafa;
+}
+header {
+  border-bottom: 3px solid var(--bleuF);
+  padding-bottom: 1em; margin-bottom: 2em;
+}
+header h1 { color: var(--bleuF); margin-bottom: 0.2em; }
+header .sub { color: #555; font-style: italic; }
+header .auth { color: #888; font-size: 0.9em; margin-top: 0.5em; }
+h2 {
+  color: var(--bleuF); border-bottom: 2px solid var(--bleuM);
+  padding-bottom: 0.3em; margin-top: 2em;
+}
+h3 { color: var(--vertF); margin-top: 1.5em; }
+.box {
+  border: 2px solid; border-radius: 6px;
+  padding: 0.8em 1em; margin: 1.2em 0;
+}
+.box .box-title {
+  font-weight: bold; font-size: 1.05em;
+  margin: -0.8em -1em 0.6em -1em;
+  padding: 0.5em 1em; border-bottom: 1px solid;
+}
+.obj { border-color: var(--bleuM); background: var(--bleuL); }
+.obj .box-title { background: var(--bleuF); color: white; border-color: var(--bleuM); }
+.note { border-color: var(--bleuM); background: var(--bleuL); }
+.note .box-title { color: var(--bleuF); border-color: var(--bleuM); }
+.warn { border-color: var(--orangeF); background: var(--orangeL); }
+.warn .box-title { color: var(--orangeF); border-color: var(--orangeF); }
+.quest { border-color: var(--violetF); background: white; }
+.quest .box-title { color: var(--violetF); border-color: var(--violetF); }
+.result { border-color: var(--vertF); background: var(--vertL); }
+.result .box-title { color: var(--vertF); border-color: var(--vertF); }
+details.code {
+  margin: 1em 0; background: var(--grisL);
+  border: 1px solid #bbb; border-radius: 6px;
+  overflow: hidden;
+}
+details.code summary {
+  cursor: pointer; padding: 0.5em 1em;
+  background: var(--bleuF); color: white;
+  font-family: sans-serif; font-size: 0.9em;
+  font-weight: bold; user-select: none;
+  list-style: none;
+}
+details.code summary::before { content: "▶ "; display: inline-block; transition: transform 0.2s; }
+details.code[open] summary::before { transform: rotate(90deg); }
+details.code summary:hover { background: var(--bleuM); }
+details.code pre {
+  margin: 0; padding: 1em; overflow-x: auto;
+  background: var(--grisL); font-size: 0.85em;
+  font-family: "Consolas", "Monaco", monospace;
+}
+table {
+  border-collapse: collapse; margin: 1em auto;
+  font-size: 0.95em;
+}
+table caption { font-style: italic; margin-bottom: 0.5em; color: #555; }
+th, td { padding: 0.4em 0.8em; border: 1px solid #ccc; }
+th { background: var(--bleuL); color: var(--bleuF); }
+tr:nth-child(even) td { background: #f8f9fa; }
+code.inline { background: #eee; padding: 0 0.3em; border-radius: 3px; font-size: 0.95em; }
+.controls {
+  position: sticky; top: 0; z-index: 100;
+  background: white; padding: 0.5em; margin-bottom: 1em;
+  border-bottom: 1px solid #ddd; text-align: right;
+  font-family: sans-serif; font-size: 0.85em;
+}
+.controls button {
+  background: var(--bleuF); color: white; border: none;
+  padding: 0.4em 0.9em; border-radius: 4px; cursor: pointer;
+  margin-left: 0.5em;
+}
+.controls button:hover { background: var(--bleuM); }
+.nav { text-align: center; margin: 2em 0; font-family: sans-serif; }
+.nav a {
+  color: var(--bleuF); text-decoration: none;
+  padding: 0.3em 0.8em; border: 1px solid var(--bleuM); border-radius: 4px;
+  margin: 0 0.2em; display: inline-block;
+}
+.nav a:hover { background: var(--bleuL); }
+ul, ol { padding-left: 1.5em; }
+ul li, ol li { margin-bottom: 0.3em; }
+@media print {
+  .controls, .nav { display: none; }
+  details.code { page-break-inside: avoid; }
+  details.code[open] pre { max-height: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <span>Code R : </span>
+  <button onclick="document.querySelectorAll('details.code').forEach(d=>d.open=true)">Tout afficher</button>
+  <button onclick="document.querySelectorAll('details.code').forEach(d=>d.open=false)">Tout masquer</button>
+</div>
+
+<header>
+  <h1>TP Jour 1 — Irrigation de Précision</h1>
+  <div class="sub">Calcul de l'évapotranspiration et programmation de l'irrigation</div>
+  <div class="auth">Prof. Silvio José Gumiere</div>
+</header>
+
+<div class="box obj">
+  <div class="box-title">Objectifs du TP</div>
+  <ol>
+    <li>Calculer ET$_0$ par Penman-Monteith avec R</li>
+    <li>Déterminer les besoins en eau des cultures (olivier, agrumes, tomate)</li>
+    <li>Établir un programme d'irrigation pour le Souss-Massa</li>
+  </ol>
+</div>
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  <strong>Prérequis :</strong> R/RStudio, notions d'hydrologie, connaissances du Jour 1 du cours. Durée estimée : 80 minutes.
+</div>
+
+<h2>Exercice 1 : Calcul de ET$_0$ avec R (40 min)</h2>
+
+<p>L'évapotranspiration de référence (ET$_0$) est un paramètre essentiel pour la programmation de l'irrigation. Dans cet exercice, nous utiliserons l'équation de Penman-Monteith FAO-56 pour calculer ET$_0$ à partir de données météorologiques mensuelles d'Agadir (Maroc).</p>
+
+<h3>Étape 1 : Chargement des données météorologiques</h3>
+<p>Créez un tableau de données contenant les données mensuelles d'Agadir (Tmin, Tmax, HR, Vent, Insolation).</p>
+
+<table>
+<caption>Données météorologiques mensuelles d'Agadir</caption>
+<thead><tr><th>Mois</th><th>Tmin (°C)</th><th>Tmax (°C)</th><th>HR (%)</th><th>Vent (m/s)</th><th>Insol (h/j)</th></tr></thead>
+<tbody>
+<tr><td>Janvier</td><td>8.5</td><td>19.2</td><td>72</td><td>3.8</td><td>7.0</td></tr>
+<tr><td>Février</td><td>9.1</td><td>20.3</td><td>70</td><td>4.1</td><td>7.5</td></tr>
+<tr><td>Mars</td><td>11.0</td><td>22.5</td><td>65</td><td>4.0</td><td>8.0</td></tr>
+<tr><td>Avril</td><td>13.5</td><td>24.8</td><td>62</td><td>3.7</td><td>8.5</td></tr>
+<tr><td>Mai</td><td>17.2</td><td>28.5</td><td>58</td><td>3.5</td><td>9.0</td></tr>
+<tr><td>Juin</td><td>21.0</td><td>32.1</td><td>55</td><td>3.3</td><td>9.2</td></tr>
+<tr><td>Juillet</td><td>23.5</td><td>34.2</td><td>52</td><td>3.5</td><td>9.1</td></tr>
+<tr><td>Août</td><td>23.2</td><td>33.8</td><td>54</td><td>3.6</td><td>8.8</td></tr>
+<tr><td>Septembre</td><td>21.0</td><td>31.5</td><td>60</td><td>3.5</td><td>8.2</td></tr>
+<tr><td>Octobre</td><td>17.0</td><td>27.5</td><td>66</td><td>3.8</td><td>7.5</td></tr>
+<tr><td>Novembre</td><td>12.5</td><td>23.0</td><td>70</td><td>3.9</td><td>7.0</td></tr>
+<tr><td>Décembre</td><td>9.2</td><td>19.5</td><td>73</td><td>3.9</td><td>6.8</td></tr>
+</tbody>
+</table>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Creation du data.frame
+agadir <- data.frame(
+  mois = c("Jan", "Fev", "Mar", "Avr", "Mai", "Jun",
+           "Jul", "Aou", "Sep", "Oct", "Nov", "Dec"),
+  Tmin = c(8.5, 9.1, 11.0, 13.5, 17.2, 21.0,
+           23.5, 23.2, 21.0, 17.0, 12.5, 9.2),
+  Tmax = c(19.2, 20.3, 22.5, 24.8, 28.5, 32.1,
+           34.2, 33.8, 31.5, 27.5, 23.0, 19.5),
+  HR = c(72, 70, 65, 62, 58, 55, 52, 54, 60, 66, 70, 73),
+  Vent = c(3.8, 4.1, 4.0, 3.7, 3.5, 3.3,
+           3.5, 3.6, 3.5, 3.8, 3.9, 3.9),
+  Insol = c(7.0, 7.5, 8.0, 8.5, 9.0, 9.2,
+            9.1, 8.8, 8.2, 7.5, 7.0, 6.8)
+)
+print(agadir)</code></pre></details>
+
+<h3>Étape 2 : Calcul des paramètres intermédiaires</h3>
+<p>Avant de calculer ET$_0$, nous devons calculer plusieurs paramètres intermédiaires : pression atmosphérique, constante psychrométrique, pression de vapeur saturante et pente de la courbe de pression de vapeur. L'altitude d'Agadir est d'environ 20 m.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Parametres de base
+z <- 20  # altitude en metres
+latitude <- 30.4  # latitude Agadir en degres Nord
+agadir$T <- (agadir$Tmin + agadir$Tmax) / 2
+
+# Pression atmospherique (kPa)
+agadir$P <- 101.3 * ((293 - 0.0065 * z) / 293) ^ 5.26
+
+# Constante psychrometrique (kPa/C)
+agadir$gamma <- 0.000665 * agadir$P
+
+# Pression de vapeur saturante (kPa)
+agadir$es <- 0.6108 * exp(17.27 * agadir$T / (agadir$T + 237.3))
+
+# Pente Delta de la courbe de saturation (kPa/C)
+agadir$Delta <- 4098 * agadir$es / (agadir$T + 237.3) ^ 2
+
+# Pression de vapeur actuelle (kPa)
+agadir$ea <- (agadir$HR / 100) * agadir$es
+
+# Deficit de saturation
+agadir$es.ea <- agadir$es - agadir$ea
+
+# Vitesse du vent a 2m (m/s)
+agadir$u2 <- agadir$Vent
+
+cat("Parametres intermediaires calcules\n")
+print(head(agadir[, c("T", "P", "gamma", "es", "Delta", "ea")]))</code></pre></details>
+
+<h3>Étape 3 : Calcul du rayonnement net</h3>
+<p>Le rayonnement net $R_n$ est la différence entre le rayonnement solaire net (courtes longueurs d'onde) et le rayonnement longues longueurs d'onde. Nous utilisons les équations FAO-56.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Constantes
+Gsc <- 0.0820  # constante solaire (MJ/m2/min)
+pi <- 3.14159265
+
+# Angle de declination et distance relative Terre-Soleil
+jour_moyen <- c(15, 46, 74, 105, 135, 166, 196, 227, 258, 288, 319, 350)
+agadir$b <- 2 * pi * (jour_moyen - 1) / 365
+agadir$delta <- 0.409 * sin(agadir$b - 1.39)
+agadir$dr <- 1.00011 + 0.034221 * cos(agadir$b) +
+              0.00128 * sin(agadir$b) + 0.000719 * cos(2*agadir$b) +
+              0.000077 * sin(2*agadir$b)
+
+# Angle horaire au coucher du soleil
+lat_rad <- latitude * pi / 180
+agadir$ws <- acos(-tan(lat_rad) * tan(agadir$delta))
+
+# Rayonnement extraterrestre Ra (MJ/m2/jour)
+agadir$Ra <- 24 * 60 / pi * Gsc * agadir$dr *
+             (agadir$ws * sin(lat_rad) * sin(agadir$delta) +
+              cos(lat_rad) * cos(agadir$delta) * sin(agadir$ws))
+
+# Rayonnement solaire Rs (MJ/m2/jour)
+a_s <- 0.25
+b_s <- 0.5
+agadir$N <- 24 / pi * agadir$ws
+agadir$Rs <- (a_s + b_s * (agadir$Insol / agadir$N)) * agadir$Ra
+
+# Rayonnement net courtes ondes Rns (MJ/m2/jour)
+alpha <- 0.23
+agadir$Rns <- (1 - alpha) * agadir$Rs
+
+# Rayonnement net longues ondes Rnl (MJ/m2/jour)
+sigma <- 4.903e-9
+agadir$Rnl <- sigma * ((agadir$Tmax + 273.16) ^ 4 +
+              (agadir$Tmin + 273.16) ^ 4) / 2 *
+              (0.34 - 0.14 * sqrt(agadir$ea)) *
+              (1.35 * agadir$Rs / agadir$Ra - 0.35)
+
+# Rayonnement net
+agadir$Rn <- agadir$Rns - agadir$Rnl
+
+cat("Rayonnement net calcule\n")
+print(head(agadir[, c("Ra", "Rs", "Rns", "Rnl", "Rn")]))</code></pre></details>
+
+<h3>Étape 4 : Calcul de ET$_0$ Penman-Monteith FAO-56</h3>
+<p>L'équation de Penman-Monteith standardisée par la FAO pour calculer l'évapotranspiration de référence (ET$_0$) est :</p>
+
+$$\text{ET}_0 = \frac{0.408\,\Delta\,(R_n - G) + \gamma\,\frac{900}{T+273}\,u_2\,(e_s - e_a)}{\Delta + \gamma(1 + 0.34\,u_2)}$$
+
+<p>où les unités sont : ET$_0$ en mm/jour, $R_n$ en MJ/m$^2$/jour, $G$ = flux de chaleur du sol (MJ/m$^2$/jour), $\gamma$ = constante psychrométrique (kPa/°C), $\Delta$ = pente de saturation (kPa/°C), $u_2$ = vitesse du vent à 2 m (m/s), $T$ = température moyenne (°C).</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Flux de chaleur du sol G (MJ/m2/jour)
+agadir$G <- 0  # approximation simplifiee
+
+# Calcul de ET0 Penman-Monteith
+agadir$ET0 <- (0.408 * agadir$Delta * (agadir$Rn - agadir$G) +
+               agadir$gamma * (900 / (agadir$T + 273)) * agadir$u2 *
+               agadir$es.ea) /
+              (agadir$Delta + agadir$gamma * (1 + 0.34 * agadir$u2))
+
+# Arrondir a 2 decimales
+agadir$ET0 <- round(agadir$ET0, 2)
+
+cat("ET0 Penman-Monteith calculee\n")
+print(agadir[, c("mois", "T", "Rn", "u2", "es.ea", "ET0")])</code></pre></details>
+
+<h3>Étape 5 : Visualisation graphique</h3>
+<p>Représentez graphiquement l'évapotranspiration de référence mensuelle.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Graphique ET0 mensuel
+par(mar = c(5, 5, 3, 2))
+barplot(agadir$ET0, names.arg = agadir$mois,
+        xlab = "Mois", ylab = "ET0 (mm/jour)",
+        main = "Evolution mensuelle de l'evapotranspiration\nde reference (Agadir)",
+        col = "steelblue", border = "navy")
+grid(NA, NULL, lwd = 1, col = "gray70")
+abline(h = mean(agadir$ET0), col = "red", lty = 2,
+       label = paste("Moyenne:", round(mean(agadir$ET0), 2)))</code></pre></details>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  <p><strong>Q1.1 :</strong> En quel mois l'ET$_0$ est-elle maximale ? Expliquez pourquoi en fonction de la température et du rayonnement.</p>
+  <p><strong>Q1.2 :</strong> Calculez l'ET$_0$ annuelle totale (somme sur 12 mois). Comparez cette valeur avec d'autres régions semi-arides.</p>
+</div>
+
+<h2>Exercice 2 : Besoins en eau des cultures (20 min)</h2>
+
+<p>L'évapotranspiration des cultures (ET$_c$) est calculée par multiplication de ET$_0$ par un coefficient cultural Kc spécifique à chaque culture et dépendant du stade de croissance.</p>
+
+<h3>Étape 1 : Coefficients culturaux Kc</h3>
+<p>Les coefficients culturaux pour les trois cultures principales du Souss-Massa sont donnés ci-dessous. Ces valeurs sont adaptées au climat marocain.</p>
+
+<table>
+<caption>Coefficients culturaux mensuels (Kc)</caption>
+<thead><tr><th>Mois</th><th>Olivier</th><th>Agrumes</th><th>Tomate</th></tr></thead>
+<tbody>
+<tr><td>Janvier</td><td>0.60</td><td>0.65</td><td>0.00</td></tr>
+<tr><td>Février</td><td>0.60</td><td>0.65</td><td>0.00</td></tr>
+<tr><td>Mars</td><td>0.60</td><td>0.70</td><td>0.30</td></tr>
+<tr><td>Avril</td><td>0.65</td><td>0.75</td><td>0.65</td></tr>
+<tr><td>Mai</td><td>0.70</td><td>0.80</td><td>0.85</td></tr>
+<tr><td>Juin</td><td>0.75</td><td>0.82</td><td>1.00</td></tr>
+<tr><td>Juillet</td><td>0.75</td><td>0.82</td><td>1.00</td></tr>
+<tr><td>Août</td><td>0.75</td><td>0.80</td><td>0.85</td></tr>
+<tr><td>Septembre</td><td>0.70</td><td>0.78</td><td>0.55</td></tr>
+<tr><td>Octobre</td><td>0.65</td><td>0.72</td><td>0.00</td></tr>
+<tr><td>Novembre</td><td>0.60</td><td>0.68</td><td>0.00</td></tr>
+<tr><td>Décembre</td><td>0.60</td><td>0.65</td><td>0.00</td></tr>
+</tbody>
+</table>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Coefficients culturaux
+agadir$Kc_olivier <- c(0.60, 0.60, 0.60, 0.65, 0.70, 0.75,
+                       0.75, 0.75, 0.70, 0.65, 0.60, 0.60)
+agadir$Kc_agrumes <- c(0.65, 0.65, 0.70, 0.75, 0.80, 0.82,
+                       0.82, 0.80, 0.78, 0.72, 0.68, 0.65)
+agadir$Kc_tomate <- c(0.00, 0.00, 0.30, 0.65, 0.85, 1.00,
+                      1.00, 0.85, 0.55, 0.00, 0.00, 0.00)
+
+cat("Coefficients culturaux charges\n")
+print(agadir[, c("mois", "Kc_olivier", "Kc_agrumes", "Kc_tomate")])</code></pre></details>
+
+<h3>Étape 2 : Calcul de l'évapotranspiration des cultures (ET$_c$)</h3>
+<p>ET$_c$ = Kc $\times$ ET$_0$. Calculez ET$_c$ pour les trois cultures.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Calcul ETc = Kc * ET0
+agadir$ETc_olivier <- agadir$Kc_olivier * agadir$ET0
+agadir$ETc_agrumes <- agadir$Kc_agrumes * agadir$ET0
+agadir$ETc_tomate <- agadir$Kc_tomate * agadir$ET0
+
+# Arrondir
+agadir$ETc_olivier <- round(agadir$ETc_olivier, 2)
+agadir$ETc_agrumes <- round(agadir$ETc_agrumes, 2)
+agadir$ETc_tomate <- round(agadir$ETc_tomate, 2)
+
+# Tableau de resultat
+resultat_ETc <- agadir[, c("mois", "ET0", "ETc_olivier",
+                            "ETc_agrumes", "ETc_tomate")]
+print(resultat_ETc)
+
+# ETc annuelle par culture
+ETc_ann_olivier <- sum(agadir$ETc_olivier)
+ETc_ann_agrumes <- sum(agadir$ETc_agrumes)
+ETc_ann_tomate <- sum(agadir$ETc_tomate)
+
+cat("\nEvapotranspiration annuelle (mm)\n")
+cat("Olivier:", ETc_ann_olivier, "\n")
+cat("Agrumes:", ETc_ann_agrumes, "\n")
+cat("Tomate: ", ETc_ann_tomate, "\n")</code></pre></details>
+
+<h3>Étape 3 : Graphique comparatif</h3>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Graphique comparatif ETc
+par(mar = c(5, 5, 3, 2))
+plot(1:12, agadir$ETc_olivier, type = "l", lwd = 2,
+     col = "darkgreen", xlab = "Mois", ylab = "ETc (mm/jour)",
+     main = "Evapotranspiration des cultures (Agadir)",
+     ylim = c(0, max(agadir$ETc_olivier, agadir$ETc_agrumes,
+                      agadir$ETc_tomate) * 1.1))
+lines(1:12, agadir$ETc_agrumes, type = "l", lwd = 2, col = "orange")
+lines(1:12, agadir$ETc_tomate, type = "l", lwd = 2, col = "red")
+legend("topleft", legend = c("Olivier", "Agrumes", "Tomate"),
+       col = c("darkgreen", "orange", "red"), lwd = 2)
+grid(NA, NULL, lwd = 1, col = "gray70")</code></pre></details>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  <p><strong>Q2.1 :</strong> Quelle culture consomme le plus d'eau annuellement ? Expliquez les cycles de culture.</p>
+  <p><strong>Q2.2 :</strong> La tomate n'est cultivée que de mars à octobre. Pourquoi ? Quel est son ETc total (6 mois) ?</p>
+</div>
+
+<h2>Exercice 3 : Besoins en eau nets et bruts</h2>
+
+<p>Les besoins nets en eau (Bn) représentent la demande évapotranspirée non satisfaite par les précipitations efficaces. Les besoins bruts (Bb) tiennent compte de l'efficacité du système d'irrigation.</p>
+
+<h3>Étape 1 : Précipitations mensuelles d'Agadir</h3>
+
+<table>
+<caption>Précipitations mensuelles et efficacité (Agadir)</caption>
+<thead><tr><th>Mois</th><th>Préc. (mm)</th><th>Pe (mm, 80% de P)</th></tr></thead>
+<tbody>
+<tr><td>Janvier</td><td>18</td><td>14.4</td></tr>
+<tr><td>Février</td><td>12</td><td>9.6</td></tr>
+<tr><td>Mars</td><td>8</td><td>6.4</td></tr>
+<tr><td>Avril</td><td>5</td><td>4.0</td></tr>
+<tr><td>Mai</td><td>2</td><td>1.6</td></tr>
+<tr><td>Juin</td><td>1</td><td>0.8</td></tr>
+<tr><td>Juillet</td><td>0</td><td>0.0</td></tr>
+<tr><td>Août</td><td>1</td><td>0.8</td></tr>
+<tr><td>Septembre</td><td>4</td><td>3.2</td></tr>
+<tr><td>Octobre</td><td>12</td><td>9.6</td></tr>
+<tr><td>Novembre</td><td>20</td><td>16.0</td></tr>
+<tr><td>Décembre</td><td>22</td><td>17.6</td></tr>
+</tbody>
+</table>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Precipitations et pluie efficace
+P <- c(18, 12, 8, 5, 2, 1, 0, 1, 4, 12, 20, 22)
+agadir$Pe <- 0.80 * P  # Pluie efficace
+
+# Durée en jours pour chaque mois
+jours_mois <- c(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+
+# Besoins nets Bn = (ETc - Pe) (mm)
+agadir$Bn_olivier <- pmax(0, agadir$ETc_olivier * jours_mois - agadir$Pe)
+agadir$Bn_agrumes <- pmax(0, agadir$ETc_agrumes * jours_mois - agadir$Pe)
+agadir$Bn_tomate <- pmax(0, agadir$ETc_tomate * jours_mois - agadir$Pe)
+
+# Efficience du systeme d'irrigation (localisee)
+Ea <- 0.90  # 90% pour goutte-a-goutte
+
+# Besoins bruts Bb = Bn / Ea (mm)
+agadir$Bb_olivier <- round(agadir$Bn_olivier / Ea, 1)
+agadir$Bb_agrumes <- round(agadir$Bn_agrumes / Ea, 1)
+agadir$Bb_tomate <- round(agadir$Bn_tomate / Ea, 1)
+
+cat("Besoins nets et bruts (mm)\n")
+print(agadir[, c("mois", "Pe", "Bn_olivier", "Bb_olivier")])</code></pre></details>
+
+<h3>Étape 2 : Tableau synthétique pour l'olivier</h3>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Tableau synthétique olivier
+synthese <- data.frame(
+  Mois = agadir$mois,
+  P = P,
+  Pe = agadir$Pe,
+  ETc = agadir$ETc_olivier * jours_mois,
+  Bn = agadir$Bn_olivier,
+  Bb = agadir$Bb_olivier
+)
+
+cat("\nOlivier - Synthese besoins hydriques (mm/mois)\n")
+print(synthese)
+
+cat("\nTotaux annuels (mm)\n")
+cat("Precipitations:\t", sum(P), "\n")
+cat("Pluie efficace:\t", sum(agadir$Pe), "\n")
+cat("ETc olivier:\t", sum(agadir$ETc_olivier * jours_mois), "\n")
+cat("Besoin net olivier:\t", sum(agadir$Bn_olivier), "\n")
+cat("Besoin brut olivier:\t", sum(agadir$Bb_olivier), "\n")</code></pre></details>
+
+<div class="box result">
+  <div class="box-title">Résultat attendu</div>
+  Pour l'olivier à Agadir : besoin annuel brut $\approx$ 850 mm/an, soit une augmentation de 20% par rapport aux besoins nets du fait de l'efficience de l'irrigation.
+</div>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  <p><strong>Q3.1 :</strong> Pendant quels mois l'olivier nécessite-t-il d'irrigation à Agadir ? Pourquoi ?</p>
+  <p><strong>Q3.2 :</strong> Comparez les besoins bruts olivier, agrumes et tomate. Quelle culture est la plus exigeante ?</p>
+</div>
+
+<h2>Exercice 4 : Programme d'irrigation de l'olivier (20 min)</h2>
+<p>Pour programmer l'irrigation, nous déterminons la dose par apport (dose), la fréquence d'irrigation (interval entre irrigations) en fonction de la capacité de rétention en eau du sol.</p>
+
+<h3>Étape 1 : Paramètres du sol</h3>
+<p>Pour un sol limono-sableux typé de la région Souss-Massa cultivé en olivier.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Parametres du sol
+CC <- 0.32      # Capacite au champ (fraction vol.)
+PF <- 0.18      # Point de fletrissement permanent
+Zr <- 1.2       # Profondeur racinaire (m)
+f <- 0.5        # Seuil de depletition d'eau facilement disponible (50%)
+Da <- 1.35      # Densite apparente (kg/m3)
+
+# Reserve utile RFU (mm)
+RFU <- (CC - PF) * Zr * 1000  # en mm
+cat("Reserve facile RFU:", RFU, "mm\n")
+
+# Dose nette (eau facilement disponible)
+dose_nette <- RFU * f  # en mm
+cat("Dose nette (50% RFU):", dose_nette, "mm\n")</code></pre></details>
+
+<h3>Étape 2 : Fréquence et dose d'irrigation</h3>
+<p>La fréquence d'irrigation (nombre de jours entre deux irrigations) est déterminée par le rapport : fréquence = dose / ETc.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Calcul de la frequence d'irrigation (jours)
+ETc_moyen_ete <- mean(agadir$ETc_olivier[c(6, 7, 8)])  # juin a aout
+frequence <- dose_nette / ETc_moyen_ete
+
+cat("ETc moyen ete (olivier):", round(ETc_moyen_ete, 3), "mm/jour\n")
+cat("Frequence d'irrigation:", round(frequence, 1), "jours\n")
+
+# Arrondir a 1, 2 ou 3 jours selon la pratique
+frequence_arrondie <- 3  # tous les 3 jours en ete
+
+# Dose d'irrigation
+dose_irrigation <- ETc_moyen_ete * frequence_arrondie
+
+cat("Dose d'irrigation proposee:", round(dose_irrigation, 1), "mm\n")</code></pre></details>
+
+<h3>Étape 3 : Calendrier d'irrigation mensuel</h3>
+<p>Calculez le nombre d'irrigations, la dose totale et le volume total par mois.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Calendrier d'irrigation (olivier, approche simple)
+agadir$freq_jours <- c(
+  30, 30, 25, 20, 7, 5, 3, 3, 5, 10, 20, 30
+)  # frequence (jours) par mois
+
+agadir$nb_irrig <- floor(jours_mois / agadir$freq_jours)
+agadir$dose_irrig <- agadir$ETc_olivier * agadir$freq_jours
+agadir$volume_total <- agadir$ETc_olivier * jours_mois
+
+# Pour 1 hectare
+agadir$vol_ha <- agadir$volume_total * 10  # 1 mm = 10 m3/ha
+
+cat("Calendrier d'irrigation OLIVIER (1 hectare)\n")
+calendrier <- data.frame(
+  Mois = agadir$mois,
+  Freq = agadir$freq_jours,
+  Nb.Irrig = agadir$nb_irrig,
+  Dose = round(agadir$dose_irrig, 1),
+  Vol.m3 = round(agadir$vol_ha, 0)
+)
+print(calendrier)
+
+cat("\nVolume annuel pour 1 ha:", sum(calendrier$Vol.m3), "m3\n")</code></pre></details>
+
+<div class="box warn">
+  <div class="box-title">Attention</div>
+  Ce calendrier est une approximation. En pratique, il faut :
+  <ol>
+    <li>Monitorer l'humidité du sol (tensiomètre, capteur capacitif)</li>
+    <li>Ajuster selon la météo (pluies imprévues, vents forts)</li>
+    <li>Tenir compte de la croissance saisonnière et du stade de floraison</li>
+  </ol>
+</div>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  <p><strong>Q4.1 :</strong> Expliquez pourquoi la fréquence d'irrigation doit être plus courte en été (juillet-août) qu'en hiver.</p>
+  <p><strong>Q4.2 :</strong> Si on dispose d'un forage avec un débit de 10 m$^3$/h, combien de temps faut-il pour irriguer 10 hectares en juillet ?</p>
+</div>
+
+<h2>Résumé et conclusion</h2>
+<p>Dans ce TP, vous avez appris à :</p>
+<ol>
+  <li>Calculer l'évapotranspiration de référence (ET$_0$) avec l'équation de Penman-Monteith</li>
+  <li>Déterminer les coefficients culturaux et l'évapotranspiration des cultures (ET$_c$)</li>
+  <li>Estimer les besoins nets et bruts en eau</li>
+  <li>Programmer une irrigation adaptée au sol, au climat et à la culture</li>
+</ol>
+
+<p>Pour le Souss-Massa, les besoins annuels en eau d'irrigation sont :</p>
+<ul>
+  <li><strong>Olivier</strong> : 800–900 mm/an (culture peu exigeante)</li>
+  <li><strong>Agrumes</strong> : 1000–1200 mm/an (très demandeurs d'été)</li>
+  <li><strong>Tomate</strong> : 400–500 mm (saison 6 mois)</li>
+</ul>
+
+<p>Une irrigation localisée (goutte-à-goutte) permet d'atteindre 85–95% d'efficience, contre 50–60% pour l'irrigation par sillon.</p>
+
+<div class="nav">
+  <a href="index.html">Accueil</a>
+  <a href="TP02_Mouvement_Eau_Sol.html">TP 2 →</a>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body>
+</html>

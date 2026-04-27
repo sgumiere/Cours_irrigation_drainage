@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>TP Jour 4 — Interpolation spatiale</title>
+<script>MathJax = {tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+<style>
+:root { --bleuF:#1a5276; --bleuM:#2980b9; --bleuL:#d6eaf8; --vertF:#1e8449; --vertL:#d5f5e3; --orangeF:#e67e22; --orangeL:#fdebd0; --grisL:#f2f3f4; --violetF:#6c3483; }
+* { box-sizing: border-box; }
+body { font-family: Georgia, "Times New Roman", serif; max-width: 900px; margin: 2em auto; padding: 0 1.5em; line-height: 1.6; color: #222; background: #fafafa; }
+header { border-bottom: 3px solid var(--bleuF); padding-bottom: 1em; margin-bottom: 2em; }
+header h1 { color: var(--bleuF); margin-bottom: 0.2em; }
+header .sub { color: #555; font-style: italic; }
+header .auth { color: #888; font-size: 0.9em; margin-top: 0.5em; }
+h2 { color: var(--bleuF); border-bottom: 2px solid var(--bleuM); padding-bottom: 0.3em; margin-top: 2em; }
+h3 { color: var(--vertF); margin-top: 1.5em; }
+.box { border: 2px solid; border-radius: 6px; padding: 0.8em 1em; margin: 1.2em 0; }
+.box .box-title { font-weight: bold; font-size: 1.05em; margin: -0.8em -1em 0.6em -1em; padding: 0.5em 1em; border-bottom: 1px solid; }
+.obj { border-color: var(--bleuM); background: var(--bleuL); }
+.obj .box-title { background: var(--bleuF); color: white; border-color: var(--bleuM); }
+.note { border-color: var(--bleuM); background: var(--bleuL); }
+.note .box-title { color: var(--bleuF); border-color: var(--bleuM); }
+.warn { border-color: var(--orangeF); background: var(--orangeL); }
+.warn .box-title { color: var(--orangeF); border-color: var(--orangeF); }
+.quest { border-color: var(--violetF); background: white; }
+.quest .box-title { color: var(--violetF); border-color: var(--violetF); }
+.result { border-color: var(--vertF); background: var(--vertL); }
+.result .box-title { color: var(--vertF); border-color: var(--vertF); }
+details.code { margin: 1em 0; background: var(--grisL); border: 1px solid #bbb; border-radius: 6px; overflow: hidden; }
+details.code summary { cursor: pointer; padding: 0.5em 1em; background: var(--bleuF); color: white; font-family: sans-serif; font-size: 0.9em; font-weight: bold; user-select: none; list-style: none; }
+details.code summary::before { content: "▶ "; display: inline-block; transition: transform 0.2s; }
+details.code[open] summary::before { transform: rotate(90deg); }
+details.code summary:hover { background: var(--bleuM); }
+details.code pre { margin: 0; padding: 1em; overflow-x: auto; background: var(--grisL); font-size: 0.85em; font-family: Consolas, Monaco, monospace; }
+table { border-collapse: collapse; margin: 1em auto; font-size: 0.95em; }
+table caption { font-style: italic; margin-bottom: 0.5em; color: #555; }
+th, td { padding: 0.4em 0.8em; border: 1px solid #ccc; }
+th { background: var(--bleuL); color: var(--bleuF); }
+tr:nth-child(even) td { background: #f8f9fa; }
+.controls { position: sticky; top: 0; z-index: 100; background: white; padding: 0.5em; margin-bottom: 1em; border-bottom: 1px solid #ddd; text-align: right; font-family: sans-serif; font-size: 0.85em; }
+.controls button { background: var(--bleuF); color: white; border: none; padding: 0.4em 0.9em; border-radius: 4px; cursor: pointer; margin-left: 0.5em; }
+.controls button:hover { background: var(--bleuM); }
+.nav { text-align: center; margin: 2em 0; font-family: sans-serif; }
+.nav a { color: var(--bleuF); text-decoration: none; padding: 0.3em 0.8em; border: 1px solid var(--bleuM); border-radius: 4px; margin: 0 0.2em; display: inline-block; }
+.nav a:hover { background: var(--bleuL); }
+ul, ol { padding-left: 1.5em; } ul li, ol li { margin-bottom: 0.3em; }
+@media print { .controls, .nav { display: none; } details.code { page-break-inside: avoid; } details.code[open] pre { max-height: none; } }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <span>Code R : </span>
+  <button onclick="document.querySelectorAll('details.code').forEach(d=>d.open=true)">Tout afficher</button>
+  <button onclick="document.querySelectorAll('details.code').forEach(d=>d.open=false)">Tout masquer</button>
+</div>
+
+<header>
+  <h1>TP Jour 4 — Interpolation spatiale</h1>
+  <div class="sub">Krigeage et IDW pour la gestion d'irrigation</div>
+  <div class="auth">Prof. Silvio José Gumiere</div>
+</header>
+
+<div class="box obj">
+  <div class="box-title">Objectifs du TP</div>
+  <ol>
+    <li>Réaliser un krigeage ordinaire avec R</li>
+    <li>Comparer l'interpolation IDW et le krigeage</li>
+    <li>Produire des cartes de propriétés du sol pour la gestion de l'irrigation</li>
+  </ol>
+</div>
+
+<p><em>Durée totale : 70 minutes</em></p>
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  Ce TP s'appuie sur les données et le variogramme de TP 3. Nous comparerons deux méthodes d'interpolation (IDW et krigeage) puis appliquerons les résultats à la gestion de l'irrigation sur la parcelle de Meknès.
+</div>
+
+<h2>Exercice 1 : Interpolation IDW (Inverse Distance Weighting)</h2>
+<p><strong>Durée : 20 minutes</strong></p>
+
+<h3>Étape 1 : Préparation des données</h3>
+<p>Chargez les données de TP 3 ou recréez-les, puis créez une grille de prédiction.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Charger les bibliotheques
+library(gstat)
+library(sp)
+library(raster)
+
+# Recreation des donnees de TP 3
+set.seed(42)
+n_points <- 50
+x <- runif(n_points, 0, 500)
+y <- runif(n_points, 0, 500)
+
+g <- gstat(formula=z~1, locations=~x+y, dummy=TRUE, beta=5,
+           model=vgm(psill=1.2, model="Exp", range=100, nugget=0.5),
+           nmax=20)
+ks_values <- predict(g, newdata=data.frame(x=x, y=y), nsim=1)$sim1
+ks_values <- abs(ks_values) + 2
+
+data_ks <- data.frame(x=x, y=y, Ks=ks_values)
+coordinates(data_ks) <- ~x + y
+
+# Creer une grille de prediction 100x100
+grid <- expand.grid(x = seq(0, 500, length.out=100),
+                     y = seq(0, 500, length.out=100))
+coordinates(grid) <- ~x + y
+gridded(grid) <- TRUE
+
+cat("Nombre de cellules de prediction :", nrow(grid), "\n")</code></pre></details>
+
+<div class="box result">
+  <div class="box-title">Résultat attendu</div>
+  Vous devez obtenir une grille régulière de 10 000 cellules (100 × 100) couvrant le domaine [0, 500] × [0, 500] m.
+</div>
+
+<h3>Étape 2 : IDW avec différents exposants</h3>
+<p>Comparez l'interpolation IDW avec p = 1, 2 et 4.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># IDW avec p = 1, 2, 4
+idw_p1 <- idw(Ks ~ 1, locations = data_ks, newdata = grid, idp = 1)
+idw_p2 <- idw(Ks ~ 1, locations = data_ks, newdata = grid, idp = 2)
+idw_p4 <- idw(Ks ~ 1, locations = data_ks, newdata = grid, idp = 4)
+
+# Visualisation cote a cote
+par(mfrow = c(1, 3), mar = c(3, 3, 3, 1))
+
+plot_idw <- function(obj, titre) {
+  image(obj["var1.pred"], main = titre, col = heat.colors(100),
+        xlab = "X (m)", ylab = "Y (m)")
+  points(data_ks, pch = "+", cex = 2, col = "blue")
+  contour(obj["var1.pred"], add = TRUE, levels = 6, col = "gray20")
+}
+
+plot_idw(idw_p1, "IDW avec p=1")
+plot_idw(idw_p2, "IDW avec p=2")
+plot_idw(idw_p4, "IDW avec p=4")
+
+par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1)</code></pre></details>
+
+<div class="box warn">
+  <div class="box-title">Attention</div>
+  L'exposant p contrôle le lissage de l'interpolation. Plus p est élevé, plus l'interpolation est lissée et moins sensible aux points éloignés.
+</div>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  Quel effet a l'exposant p sur le lissage ? Observez-vous des artefacts (pics non réalistes) autour des points de mesure ? Laquelle des trois cartes semble la plus réaliste ?
+</div>
+
+<h2>Exercice 2 : Krigeage ordinaire</h2>
+<p><strong>Durée : 30 minutes</strong></p>
+
+<h3>Étape 1 : Rappel du variogramme ajusté</h3>
+<p>Recréez le modèle de variogramme obtenu en TP 3.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Calculer le variogramme experimental
+vg_exp <- variogram(Ks ~ 1, data = data_ks)
+
+# Definir et ajuster le modele spherique
+sill_est <- max(vg_exp$gamma)
+range_est <- vg_exp$dist[which(vg_exp$gamma >= 0.95 * sill_est)[1]]
+nugget_est <- vg_exp$gamma[1]
+
+vgm_sph_init <- vgm(psill = sill_est, model = "Sph",
+                     range = range_est, nugget = nugget_est)
+vgm_fit <- fit.variogram(vg_exp, vgm_sph_init)
+
+cat("Modele de variogramme :\n")
+print(vgm_fit)</code></pre></details>
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  Le modèle de variogramme spécifie la structure spatiale de la variabilité de Ks. Il est essentiel pour le krigeage car il contrôle les poids donnés à chaque observation.
+</div>
+
+<h3>Étape 2 : Krigeage ordinaire</h3>
+<p>Prédites Ks sur la grille entière avec le krigeage et estimez l'incertitude.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Krigeage ordinaire
+krige_result <- krige(Ks ~ 1, locations = data_ks,
+                      newdata = grid, model = vgm_fit)
+
+cat("Resultats du krigeage :\n")
+summary(krige_result$var1.pred)
+summary(sqrt(krige_result$var1.var))
+
+# Visualisation des predictions
+par(mfrow = c(1, 2), mar = c(3, 3, 3, 1))
+
+# Carte des predictions
+image(krige_result["var1.pred"],
+      main = "Krigeage ordinaire : Ks predite",
+      col = heat.colors(100),
+      xlab = "X (m)", ylab = "Y (m)")
+points(data_ks, pch = "+", cex = 2, col = "blue")
+contour(krige_result["var1.pred"], add = TRUE, levels = 8,
+        col = "gray20", drawlabels = TRUE)
+
+# Carte de la variance de krigeage
+image(krige_result["var1.var"],
+      main = "Variance de krigeage (incertitude)",
+      col = terrain.colors(100),
+      xlab = "X (m)", ylab = "Y (m)")
+points(data_ks, pch = "+", cex = 2, col = "red")
+
+par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1)</code></pre></details>
+
+<div class="box result">
+  <div class="box-title">Résultat attendu</div>
+  Vous devez obtenir deux cartes : une montrant les valeurs prédites de Ks (couleurs chaudes indiquant les valeurs élevées) et une montrant la variance de krigeage, avec l'incertitude la plus faible près des points de mesure.
+</div>
+
+<h3>Étape 3 : Analyse de la carte de variance</h3>
+<p>Interprétez la variance de krigeage.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Extraire les valeurs de variance
+var_values <- krige_result$var1.var
+std_values <- sqrt(var_values)
+
+# Statistiques
+cat("Variance de krigeage :\n")
+cat("  Min :", min(var_values), "\n")
+cat("  Max :", max(var_values), "\n")
+cat("  Moyenne :", mean(var_values), "\n")
+cat("  Ecart-type de la std :", sd(std_values), "\n")
+
+# Identifier les zones de haute incertitude
+high_var_threshold <- quantile(var_values, 0.9)
+high_var_cells <- which(var_values > high_var_threshold)
+
+cat("\nZones de haute incertitude (top 10%) :",
+    length(high_var_cells), "cellules\n")
+
+# Carte des zones haute variance
+par(mar = c(3, 3, 3, 1))
+binary_high_var <- var_values * 0
+binary_high_var[high_var_cells] <- 1
+image(matrix(binary_high_var, nrow = 100),
+      main = "Zones de haute incertitude (top 10%)",
+      col = c("white", "red"),
+      xlab = "X (m)", ylab = "Y (m)")
+points(data_ks, pch = "+", cex = 2, col = "blue")
+par(mar = c(5, 4, 4, 2) + 0.1)</code></pre></details>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  Où l'incertitude est-elle la plus grande ? Pourquoi ? Existe-t-il une corrélation entre les zones de haute variance et la densité spatiale des points de mesure ?
+</div>
+
+<h3>Étape 4 : Comparaison IDW vs Krigeage</h3>
+<p>Évaluez les avantages relatifs des deux méthodes.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Calculer les statistiques comparatives
+pred_idw <- as.vector(idw_p2["var1.pred"]@data[,1])
+pred_krige <- as.vector(krige_result["var1.pred"]@data[,1])
+
+# Statistiques
+cat("IDW (p=2) :\n")
+cat("  Moyenne :", mean(pred_idw, na.rm=TRUE), "\n")
+cat("  Ecart-type :", sd(pred_idw, na.rm=TRUE), "\n")
+
+cat("\nKrigeage :\n")
+cat("  Moyenne :", mean(pred_krige, na.rm=TRUE), "\n")
+cat("  Ecart-type :", sd(pred_krige, na.rm=TRUE), "\n")
+
+# Correlation
+pred_idw_clean <- pred_idw[!is.na(pred_idw)]
+pred_krige_clean <- pred_krige[!is.na(pred_krige)]
+if (length(pred_idw_clean) == length(pred_krige_clean)) {
+  corr <- cor(pred_idw_clean, pred_krige_clean)
+  cat("\nCorrelation IDW-Krigeage :", round(corr, 4), "\n")
+}
+
+# Visualisation comparative
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(pred_idw_clean, pred_krige_clean,
+     main = "IDW vs Krigeage",
+     xlab = "Predictions IDW (cm/h)",
+     ylab = "Predictions Krigeage (cm/h)",
+     col = "steelblue", pch = 20, cex = 0.7)
+abline(0, 1, col = "red", lwd = 2, lty = 2)
+
+diff <- pred_krige_clean - pred_idw_clean
+hist(diff, main = "Differences (Krigeage - IDW)",
+     xlab = "Difference (cm/h)", col = "lightgreen", breaks = 30)
+par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1)</code></pre></details>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  Quels sont les avantages du krigeage par rapport à IDW ? Pensez particulièrement aux aspects suivants :
+  <ul>
+    <li>Incertitude fournie par le krigeage (variance)</li>
+    <li>Utilisation de la structure spatiale (variogramme)</li>
+    <li>Efficacité computationnelle</li>
+  </ul>
+</div>
+
+<h2>Exercice 3 : Application à la gestion de l'irrigation</h2>
+<p><strong>Durée : 20 minutes</strong></p>
+
+<h3>Étape 1 : Classification en zones de gestion</h3>
+<p>Découpez la grille en trois zones de gestion selon le niveau de Ks.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Extraire les predictions de krigeage
+ks_pred <- krige_result$var1.pred
+
+# Seuils de classification
+seuil_bas <- quantile(ks_pred, 0.33, na.rm=TRUE)
+seuil_haut <- quantile(ks_pred, 0.67, na.rm=TRUE)
+
+cat("Seuils de classification :\n")
+cat("  Ks faible : < ", round(seuil_bas, 2), " cm/h\n")
+cat("  Ks moyen : ", round(seuil_bas, 2), " a ",
+    round(seuil_haut, 2), " cm/h\n")
+cat("  Ks eleve : > ", round(seuil_haut, 2), " cm/h\n")
+
+# Creer une grille de classification
+zones <- ks_pred * 0
+zones[ks_pred <= seuil_bas] <- 1
+zones[ks_pred > seuil_bas & ks_pred <= seuil_haut] <- 2
+zones[ks_pred > seuil_haut] <- 3
+
+# Visualisation
+par(mar = c(3, 3, 3, 1))
+colors_zones <- c("red", "yellow", "green")
+image(matrix(zones, nrow = 100),
+      col = colors_zones,
+      main = "Zones de gestion de l'irrigation",
+      xlab = "X (m)", ylab = "Y (m)")
+points(data_ks, pch = "+", cex = 2, col = "blue")
+legend("topright",
+       c("Faible Ks", "Moyen Ks", "Eleve Ks"),
+       col = colors_zones, pch = 15)
+par(mar = c(5, 4, 4, 2) + 0.1)
+
+# Statistiques par zone
+for (z in 1:3) {
+  zone_name <- c("Faible", "Moyen", "Eleve")[z]
+  zone_vals <- ks_pred[zones == z]
+  zone_area <- length(zone_vals) * (500/100)^2
+  cat(sprintf("Zone %s : %.1f ha (%.1f%%)\n",
+              zone_name, zone_area / 10000,
+              100 * length(zone_vals) / length(ks_pred)))
+}</code></pre></details>
+
+<div class="box result">
+  <div class="box-title">Résultat attendu</div>
+  Vous devez obtenir une carte répartissant le domaine en trois couleurs (rouge, jaune, vert) représentant les trois zones de Ks. Les statistiques montrent la superficie de chaque zone.
+</div>
+
+<h3>Étape 2 : Recommandations d'irrigation par zone</h3>
+<p>Créez un tableau synthétique de recommandations.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Creer un tableau de recommandations
+recommendations <- data.frame(
+  Zone = c("Faible Ks", "Moyen Ks", "Eleve Ks"),
+  Texture = c("Argile/limon", "Limon-sableux", "Sable/graviers"),
+  Ks_range = c(paste("< ", round(seuil_bas, 2)),
+               paste(round(seuil_bas, 2), "-",
+                     round(seuil_haut, 2)),
+               paste("> ", round(seuil_haut, 2))),
+  Debit_goutteur = c("3-4 L/h", "4-6 L/h", "6-10 L/h"),
+  Duree_irrigation = c("2-3 h/jour", "1.5-2 h/jour", "1-1.5 h/jour"),
+  Frequence = c("Tous les 2-3 jours", "Tous les 3-4 jours",
+                "Tous les 4-5 jours"),
+  Notes = c("Drainage lent, risque",
+           "Conditions optimales",
+           "Drainage rapide, lessivage"),
+  stringsAsFactors = FALSE
+)
+
+print(recommendations)</code></pre></details>
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  Ces recommandations sont basées sur la relation entre texture du sol (inférée de Ks) et la capacité de rétention d'eau. Les zones à faible Ks retiennent mieux l'eau (souvent argile) tandis que les zones à élevé Ks drainent rapidement (sables).
+</div>
+
+<div class="box warn">
+  <div class="box-title">Attention</div>
+  Ces recommandations sont des directives générales. Les ajustements finaux doivent tenir compte d'autres facteurs : profondeur de l'eau disponible, salinité, culture, climat local.
+</div>
+
+<h3>Étape 3 : Optimisation de l'échantillonnage</h3>
+<p>Identifiez où ajouter de nouveaux points de mesure pour réduire l'incertitude.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Extraire la variance de krigeage
+var_krige <- krige_result$var1.var
+std_krige <- sqrt(var_krige)
+
+# Identifier les zones de forte incertitude
+high_uncertainty_threshold <- quantile(std_krige, 0.85, na.rm=TRUE)
+high_unc_cells <- which(std_krige > high_uncertainty_threshold)
+
+# Convertir indices de cellule en coordonnees
+grid_coords <- coordinates(grid)
+unc_coords <- grid_coords[high_unc_cells, ]
+
+cat("Nombre de cellules avec haute incertitude :",
+    length(high_unc_cells), "\n")
+
+# Proposer de nouveaux points d'echantillonnage
+library(stats)
+if (nrow(unc_coords) > 10) {
+  kmeans_result <- kmeans(unc_coords, centers = 5)
+  new_points <- kmeans_result$centers
+} else {
+  new_points <- unc_coords
+}
+
+cat("Nombre de nouveaux points proposes :", nrow(new_points), "\n")
+
+# Visualisation
+par(mar = c(3, 3, 3, 1))
+image(matrix(std_krige, nrow = 100),
+      main = "Zones de haute incertitude",
+      col = terrain.colors(100),
+      xlab = "X (m)", ylab = "Y (m)")
+points(data_ks, pch = 20, cex = 2, col = "blue")
+points(new_points[, 1], new_points[, 2],
+       pch = 3, cex = 3, col = "red", lwd = 2)
+legend("topright",
+       c("Points existants", "Points proposes"),
+       pch = c(20, 3), col = c("blue", "red"))
+par(mar = c(5, 4, 4, 2) + 0.1)</code></pre></details>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  Combien de points supplémentaires faut-il à votre avis pour améliorer significativement le modèle ? Où sont localisés ces nouveaux points ? Pourquoi ces emplacements sont-ils critiques ?
+</div>
+
+<h3>Étape 4 : Synthèse et recommandations finales</h3>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Creer un resume des resultats
+cat("=== SYNTHESE DE L'ETUDE GEOSPATIALE ===\n\n")
+
+cat("1. CARACTERISTIQUES DE Ks :\n")
+cat("   Moyenne :", round(mean(data_ks$Ks), 2), " cm/h\n")
+cat("   Ecart-type :", round(sd(data_ks$Ks), 2), " cm/h\n")
+cat("   Portee d'autocorrelation :",
+    round(range_est, 1), " m\n\n")
+
+cat("2. ZONES DE GESTION :\n")
+for (z in 1:3) {
+  zone_name <- c("Faible", "Moyen", "Eleve")[z]
+  zone_vals <- ks_pred[zones == z]
+  zone_area <- length(zone_vals) * (500/100)^2
+  cat(sprintf("   Zone %s : %.1f ha\n",
+              zone_name, zone_area / 10000))
+}
+
+cat("\n3. INCERTITUDE DU MODELE :\n")
+cat("   Ecart-type moyen :", round(mean(std_krige), 3), " cm/h\n")
+cat("   Incertitude relative :",
+    round(100 * mean(std_krige) / mean(data_ks$Ks), 1), "%\n\n")
+
+cat("4. RECOMMANDATIONS :\n")
+cat("   - Ajouter", nrow(new_points),
+    "nouveaux points de mesure\n")
+cat("   - Adapter debits de goutteurs par zone\n")
+cat("   - Verifier les hypotheses pedologiques\n")
+cat("   - Valider les predictions sur le terrain\n")</code></pre></details>
+
+<div class="nav">
+  <a href="TP03_Variabilite_Spatiale_R.html">← TP 3</a>
+  <a href="index.html">Accueil</a>
+  <a href="TP05_Irrigation_Localisee.html">TP 5 →</a>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body>
+</html>

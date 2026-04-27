@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>TP Jour 6 — Modélisation avec HYDRUS-1D</title>
+<script>MathJax = {tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+<style>
+:root { --bleuF:#1a5276; --bleuM:#2980b9; --bleuL:#d6eaf8; --vertF:#1e8449; --vertL:#d5f5e3; --orangeF:#e67e22; --orangeL:#fdebd0; --grisL:#f2f3f4; --violetF:#6c3483; }
+* { box-sizing: border-box; }
+body { font-family: Georgia, "Times New Roman", serif; max-width: 900px; margin: 2em auto; padding: 0 1.5em; line-height: 1.6; color: #222; background: #fafafa; }
+header { border-bottom: 3px solid var(--bleuF); padding-bottom: 1em; margin-bottom: 2em; }
+header h1 { color: var(--bleuF); margin-bottom: 0.2em; }
+header .sub { color: #555; font-style: italic; }
+header .auth { color: #888; font-size: 0.9em; margin-top: 0.5em; }
+h2 { color: var(--bleuF); border-bottom: 2px solid var(--bleuM); padding-bottom: 0.3em; margin-top: 2em; }
+h3 { color: var(--vertF); margin-top: 1.5em; }
+.box { border: 2px solid; border-radius: 6px; padding: 0.8em 1em; margin: 1.2em 0; }
+.box .box-title { font-weight: bold; font-size: 1.05em; margin: -0.8em -1em 0.6em -1em; padding: 0.5em 1em; border-bottom: 1px solid; }
+.obj { border-color: var(--bleuM); background: var(--bleuL); }
+.obj .box-title { background: var(--bleuF); color: white; border-color: var(--bleuM); }
+.note { border-color: var(--bleuM); background: var(--bleuL); }
+.note .box-title { color: var(--bleuF); border-color: var(--bleuM); }
+.warn { border-color: var(--orangeF); background: var(--orangeL); }
+.warn .box-title { color: var(--orangeF); border-color: var(--orangeF); }
+.quest { border-color: var(--violetF); background: white; }
+.quest .box-title { color: var(--violetF); border-color: var(--violetF); }
+.result { border-color: var(--vertF); background: var(--vertL); }
+.result .box-title { color: var(--vertF); border-color: var(--vertF); }
+details.code { margin: 1em 0; background: var(--grisL); border: 1px solid #bbb; border-radius: 6px; overflow: hidden; }
+details.code summary { cursor: pointer; padding: 0.5em 1em; background: var(--bleuF); color: white; font-family: sans-serif; font-size: 0.9em; font-weight: bold; user-select: none; list-style: none; }
+details.code summary::before { content: "▶ "; display: inline-block; transition: transform 0.2s; }
+details.code[open] summary::before { transform: rotate(90deg); }
+details.code summary:hover { background: var(--bleuM); }
+details.code pre { margin: 0; padding: 1em; overflow-x: auto; background: var(--grisL); font-size: 0.85em; font-family: Consolas, Monaco, monospace; }
+table { border-collapse: collapse; margin: 1em auto; font-size: 0.95em; }
+table caption { font-style: italic; margin-bottom: 0.5em; color: #555; }
+th, td { padding: 0.4em 0.8em; border: 1px solid #ccc; }
+th { background: var(--bleuL); color: var(--bleuF); }
+tr:nth-child(even) td { background: #f8f9fa; }
+.controls { position: sticky; top: 0; z-index: 100; background: white; padding: 0.5em; margin-bottom: 1em; border-bottom: 1px solid #ddd; text-align: right; font-family: sans-serif; font-size: 0.85em; }
+.controls button { background: var(--bleuF); color: white; border: none; padding: 0.4em 0.9em; border-radius: 4px; cursor: pointer; margin-left: 0.5em; }
+.controls button:hover { background: var(--bleuM); }
+.nav { text-align: center; margin: 2em 0; font-family: sans-serif; }
+.nav a { color: var(--bleuF); text-decoration: none; padding: 0.3em 0.8em; border: 1px solid var(--bleuM); border-radius: 4px; margin: 0 0.2em; display: inline-block; }
+.nav a:hover { background: var(--bleuL); }
+ul, ol { padding-left: 1.5em; } ul li, ol li { margin-bottom: 0.3em; }
+@media print { .controls, .nav { display: none; } details.code { page-break-inside: avoid; } details.code[open] pre { max-height: none; } }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <span>Code R : </span>
+  <button onclick="document.querySelectorAll('details.code').forEach(d=>d.open=true)">Tout afficher</button>
+  <button onclick="document.querySelectorAll('details.code').forEach(d=>d.open=false)">Tout masquer</button>
+</div>
+
+<header>
+  <h1>TP Jour 6 — Modélisation avec HYDRUS-1D</h1>
+  <div class="sub">Simulation du mouvement d'eau sous irrigation</div>
+  <div class="auth">Prof. Silvio José Gumiere</div>
+</header>
+
+<div class="box obj">
+  <div class="box-title">Objectifs du TP</div>
+  <ul>
+    <li>Configurer un projet HYDRUS-1D pas à pas</li>
+    <li>Simuler l'irrigation par goutte-à-goutte sur un sol du Gharb</li>
+    <li>Analyser les résultats avec R</li>
+    <li>Comparer des scénarios d'irrigation</li>
+  </ul>
+</div>
+
+<h2>Exercice 1 : Configuration HYDRUS-1D</h2>
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  Durée estimée : 30 minutes
+</div>
+
+<h3>Étape 1 : Paramètres Généraux du Projet</h3>
+<p>La modélisation numérique du mouvement d'eau dans le sol repose sur l'équation de Richards, résolue numériquement par HYDRUS-1D. Les principaux paramètres à définir sont :</p>
+
+<table>
+<thead><tr><th>Paramètre</th><th>Valeur</th></tr></thead>
+<tbody>
+<tr><td>Durée de simulation</td><td>30 jours</td></tr>
+<tr><td>Pas de temps initial</td><td>0.001 jours $\approx$ 86 secondes</td></tr>
+<tr><td>Pas de temps maximum</td><td>0.5 jours (12 heures)</td></tr>
+<tr><td>Profondeur du profil</td><td>100 cm = 1.0 m</td></tr>
+<tr><td>Nombre de nœuds</td><td>101</td></tr>
+<tr><td>Équation utilisée</td><td>Richards (eau seule)</td></tr>
+</tbody>
+</table>
+
+<p>Ces paramètres garantissent une précision numérique suffisante tout en maintenant des temps de calcul raisonnables (quelques minutes).</p>
+
+<h3>Étape 2 : Propriétés du Sol (Modèle van Genuchten)</h3>
+<p>Le sol du Gharb (plaine céréalière du Maroc occidental) présente deux horizons distincts. Les propriétés hydrodynamiques sont décrites par le modèle van Genuchten :</p>
+
+$$\theta(h) = \theta_r + \frac{\theta_s - \theta_r}{[1 + |\alpha h|^n]^m}, \quad m = 1 - \frac{1}{n}$$
+
+$$K(\theta) = K_s \left\{\left[\frac{\theta - \theta_r}{\theta_s - \theta_r}\right]^l \left\{1 - \left[1 - \left(\frac{\theta - \theta_r}{\theta_s - \theta_r}\right)^{1/m}\right]^m\right\}^2\right\}$$
+
+<p><strong>Couche 1 (0–40 cm) : Limon argileux</strong></p>
+<table>
+<thead><tr><th>Paramètre</th><th>Notation</th><th>Valeur</th></tr></thead>
+<tbody>
+<tr><td>Teneur en eau résiduelle</td><td>$\theta_r$</td><td>0.078 cm$^3$/cm$^3$</td></tr>
+<tr><td>Teneur en eau saturante</td><td>$\theta_s$</td><td>0.43 cm$^3$/cm$^3$</td></tr>
+<tr><td>Paramètre d'air-entry</td><td>$\alpha$</td><td>0.036 cm$^{-1}$</td></tr>
+<tr><td>Indice de porosité</td><td>$n$</td><td>1.56</td></tr>
+<tr><td>Conductivité saturante</td><td>$K_s$</td><td>1.04 cm/j</td></tr>
+<tr><td>Paramètre de torsion</td><td>$l$</td><td>0.5</td></tr>
+</tbody>
+</table>
+
+<p><strong>Couche 2 (40–100 cm) : Argile</strong></p>
+<table>
+<thead><tr><th>Paramètre</th><th>Notation</th><th>Valeur</th></tr></thead>
+<tbody>
+<tr><td>Teneur en eau résiduelle</td><td>$\theta_r$</td><td>0.068 cm$^3$/cm$^3$</td></tr>
+<tr><td>Teneur en eau saturante</td><td>$\theta_s$</td><td>0.38 cm$^3$/cm$^3$</td></tr>
+<tr><td>Paramètre d'air-entry</td><td>$\alpha$</td><td>0.027 cm$^{-1}$</td></tr>
+<tr><td>Indice de porosité</td><td>$n$</td><td>1.23</td></tr>
+<tr><td>Conductivité saturante</td><td>$K_s$</td><td>0.48 cm/j</td></tr>
+<tr><td>Paramètre de torsion</td><td>$l$</td><td>0.5</td></tr>
+</tbody>
+</table>
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  Ces paramètres proviennent de la base de données ROSETTA du USDA ou d'ajustements locaux pour les sols marocains.
+</div>
+
+<h3>Étape 3 : Conditions Initiales</h3>
+<p>Au début de la simulation, le sol est en état d'équilibre hydrostatique avec une charge matricielle uniforme :</p>
+$$h_0 = -200 \text{ cm}$$
+<p>Cette valeur correspond à un sol relativement sec (teneur en eau intermédiaire), représentant les conditions après une période sans irrigation.</p>
+
+<div class="box warn">
+  <div class="box-title">Attention</div>
+  La charge $h$ est négative dans la zone non saturée. Une valeur de $-200$ cm signifie un potentiel matriciel de $-200$ cm d'eau, soit environ $-20$ kPa.
+</div>
+
+<h3>Étape 4 : Conditions aux Limites</h3>
+<p><strong>Limite supérieure (surface du sol) :</strong> La surface est soumise à un flux atmosphérique qui dépend de l'irrigation, de la pluie et de l'évapotranspiration. On utilise l'option <strong>Atmospheric BC</strong> avec données journalières.</p>
+
+<table>
+<caption>Table d'entrée pour 30 jours</caption>
+<thead><tr><th>Jour</th><th>Irrigation (mm)</th><th>Pluie (mm)</th><th>ET0 (mm)</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>20.0</td><td>0</td><td>5.0</td></tr>
+<tr><td>2–5</td><td>0</td><td>0</td><td>5.5</td></tr>
+<tr><td>6–10</td><td>0</td><td>2.0</td><td>5.0</td></tr>
+<tr><td>11</td><td>20.0</td><td>0</td><td>5.0</td></tr>
+<tr><td>12–15</td><td>0</td><td>0</td><td>5.5</td></tr>
+<tr><td>16–20</td><td>0</td><td>0</td><td>5.0</td></tr>
+<tr><td>21</td><td>20.0</td><td>0</td><td>5.0</td></tr>
+<tr><td>22–30</td><td>0</td><td>0</td><td>5.5</td></tr>
+</tbody>
+</table>
+
+<p><strong>Limite inférieure (100 cm de profondeur) :</strong> Free drainage (drainage libre) — l'eau peut s'échapper librement sans remontée capillaire, ce qui est réaliste pour un profil de 100 cm en irrigation.</p>
+
+<h3>Étape 5 : Modèle de Prélèvement Racinaire (Feddes)</h3>
+<p>L'olivier absorbe l'eau par ses racines selon le modèle de Feddes, qui introduit un coefficient de stress hydrique selon les valeurs de potentiel matriciel.</p>
+
+<table>
+<caption>Paramètres pour olivier (Décision 1997)</caption>
+<thead><tr><th>Point de transition</th><th>Charge matricielle (cm)</th></tr></thead>
+<tbody>
+<tr><td>$h_1$ (saturation)</td><td>$-10$</td></tr>
+<tr><td>$h_2$ (début du stress)</td><td>$-25$</td></tr>
+<tr><td>$h_3^{\text{bas}}$ (stress faible)</td><td>$-500$</td></tr>
+<tr><td>$h_3^{\text{élevé}}$ (stress élevé)</td><td>$-800$</td></tr>
+<tr><td>$h_4$ (flétrissement permanent)</td><td>$-8000$</td></tr>
+</tbody>
+</table>
+
+<p><strong>Distribution racinaire :</strong> distribution linéaire décroissante avec $z_{max} = 80$ cm (profondeur effective des racines de l'olivier).</p>
+
+<h3>Étape 6 : Temps de Sortie (Observations)</h3>
+<p>Spécifier les instants auxquels on souhaite enregistrer les profils complets d'humidité et de potentiel :</p>
+
+<table>
+<thead><tr><th>Jour</th><th>Remarque</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Juste après 1ʳᵉ irrigation</td></tr>
+<tr><td>2</td><td>Début du drainage</td></tr>
+<tr><td>5</td><td>Avant 2ᵉ irrigation</td></tr>
+<tr><td>10</td><td>Après 2ᵉ irrigation</td></tr>
+<tr><td>15</td><td>Milieu de période</td></tr>
+<tr><td>20</td><td>Avant 3ᵉ irrigation</td></tr>
+<tr><td>25</td><td>Après 3ᵉ irrigation</td></tr>
+<tr><td>30</td><td>Fin de simulation</td></tr>
+</tbody>
+</table>
+
+<h2>Exercice 2 : Analyse des Résultats avec R</h2>
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  Durée estimée : 20 minutes
+</div>
+
+<h3>Étape 1 : Lecture des Fichiers de Sortie HYDRUS</h3>
+<p>Après la simulation, HYDRUS génère plusieurs fichiers ASCII. Les deux principaux sont :</p>
+<ul>
+  <li><strong>PROFILE.OUT</strong> : profils de teneur en eau $\theta$ et charge $h$ aux temps de sortie</li>
+  <li><strong>T_LEVEL.OUT</strong> : variables intégrées dans le temps (flux, cum)</li>
+</ul>
+
+<details class="code"><summary>Afficher la structure PROFILE.OUT</summary><pre><code class="language-r"># [Col  1] Time = 1.000000 [L]
+# [Col  2] Depth [L]
+# [Col  3] Theta [L3/L3]
+# [Col  4] h [L]
+  Time   Depth   Theta    h
+  1.00   0.00   0.280  -50.5
+  1.00   0.01   0.285  -48.2
+  ...</code></pre></details>
+
+<p>Le fichier est organisé par blocs (un bloc par temps de sortie). Code R pour charger les données :</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Lecture du fichier PROFILE.OUT
+profile_file <- "PROFILE.OUT"
+
+# Fonction pour parser PROFILE.OUT
+read_hydrus_profile <- function(filename) {
+  lines <- readLines(filename)
+
+  # Identifier les lignes de donnees
+  data_lines <- grep("^[^#]", lines)
+
+  # Parser
+  data <- read.table(filename, skip=0)
+  colnames(data) <- c("Temps", "Profondeur", "Teneur_eau", "Charge")
+
+  # Convertir profondeur en cm
+  data$Profondeur_cm <- data$Profondeur * 100
+
+  return(data)
+}
+
+# Charger les donnees
+profile_data <- read_hydrus_profile(profile_file)
+
+# Verifier les premieres lignes
+head(profile_data)</code></pre></details>
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  Selon votre version de HYDRUS et le système d'exploitation, le format exact peut varier. Il est possible de lire avec <code>read.fwf()</code> (colonnes de largeur fixe) si les données sont fortement formatées.
+</div>
+
+<h3>Étape 2 : Profils de Teneur en Eau</h3>
+<p>Tracer l'évolution de $\theta(z)$ au cours du temps pour visualiser le front d'humectation lors des irrigations.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Extraire les temps uniques
+times <- unique(profile_data$Temps)
+
+# Couleurs pour les differents temps
+colors <- colorRampPalette(c("brown", "blue"))(length(times))
+
+# Graphique : profils de teneur en eau
+png("profils_humidite.png", width=900, height=600)
+plot(profile_data$Teneur_eau[profile_data$Temps == times[1]],
+     profile_data$Profondeur_cm[profile_data$Temps == times[1]],
+     type="l", lwd=2, col=colors[1],
+     xlab="Teneur en eau (cm3/cm3)",
+     ylab="Profondeur (cm)",
+     main="Evolution des profils de teneur en eau",
+     ylim=c(100, 0), xlim=c(0.05, 0.45))
+
+for(i in 2:length(times)) {
+  lines(profile_data$Teneur_eau[profile_data$Temps == times[i]],
+        profile_data$Profondeur_cm[profile_data$Temps == times[i]],
+        lwd=2, col=colors[i])
+}
+
+legend("bottomright",
+       paste("Jour", round(times, 1)),
+       col=colors, lwd=2)
+grid()
+dev.off()
+
+cat("Graphique sauve : profils_humidite.png\n")</code></pre></details>
+
+<h3>Étape 3 : Évolution Temporelle à Profondeurs Spécifiques</h3>
+<p>Suivre la teneur en eau aux profondeurs 10 cm, 30 cm et 60 cm pour observer la réponse rapide en surface et le drainage en profondeur.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Teneur en eau a profondeurs specifiques
+z_interets <- c(10, 30, 60)  # cm
+
+# Pour chaque profondeur, extraire theta et temps
+theta_evolution <- data.frame(
+  Temps = numeric(),
+  Profondeur = numeric(),
+  Theta = numeric()
+)
+
+for(z in z_interets) {
+  indices <- which(abs(profile_data$Profondeur_cm - z) < 0.5)
+
+  if(length(indices) > 0) {
+    for(idx in indices) {
+      theta_evolution <- rbind(theta_evolution,
+        data.frame(
+          Temps = profile_data$Temps[idx],
+          Profondeur = z,
+          Theta = profile_data$Teneur_eau[idx]
+        )
+      )
+    }
+  }
+}
+
+# Graphique temporel
+png("theta_vs_temps.png", width=900, height=600)
+plot(NULL, xlim=c(0, 30), ylim=c(0.05, 0.45),
+     xlab="Temps (jours)", ylab="Teneur en eau (cm3/cm3)",
+     main="Evolution temporelle de la teneur en eau")
+
+# Couleurs par profondeur
+col_map <- c("10"="green", "30"="orange", "60"="darkred")
+
+for(z in z_interets) {
+  subset_data <- theta_evolution[theta_evolution$Profondeur == z, ]
+  subset_data <- subset_data[order(subset_data$Temps), ]
+  lines(subset_data$Temps, subset_data$Theta,
+        type="o", lwd=2, col=col_map[as.character(z)])
+}
+
+# Marquer les jours d'irrigation
+abline(v=c(1, 11, 21), col="blue", lty=2, lwd=1.5)
+text(c(1, 11, 21), 0.42, "Irrig.", cex=0.8)
+
+legend("bottomright",
+       paste("z =", z_interets, "cm"),
+       col=as.character(col_map[as.character(z_interets)]),
+       lwd=2)
+grid()
+dev.off()
+
+cat("Graphique sauve : theta_vs_temps.png\n")</code></pre></details>
+
+<h3>Étape 4 : Bilan Hydrique et Efficience de l'Irrigation</h3>
+<p>Le bilan hydrique cumulé permet d'évaluer l'efficience :</p>
+$$\text{Efficience} = \frac{\text{Évapotranspiration réelle (ETa)}}{\text{Irrigation totale}} \times 100$$
+
+<p>HYDRUS fournit dans <strong>T_LEVEL.OUT</strong> les flux cumulés :</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Lecture du fichier T_LEVEL.OUT
+t_level_file <- "T_LEVEL.OUT"
+
+# Charger les donnees
+t_level <- read.table(t_level_file, header=TRUE, skip=2)
+
+# Cumules sur 30 jours
+total_irrigation <- sum(t_level$FluxTop[t_level$FluxTop > 0], na.rm=TRUE)
+total_drainage <- abs(sum(t_level$FluxBot[t_level$FluxBot < 0], na.rm=TRUE))
+total_ET <- sum(t_level$Transpiration + t_level$Evaporation, na.rm=TRUE)
+stockage_final <- t_level$Stockage[nrow(t_level)] -
+                  t_level$Stockage[1]
+
+# Efficience
+efficience <- total_ET / total_irrigation * 100
+
+cat("=== BILAN HYDRIQUE 30 JOURS ===\n\n")
+cat("Irrigation totale :", round(total_irrigation, 1), "mm\n")
+cat("Drainage total :", round(total_drainage, 1), "mm\n")
+cat("Evapotranspiration :", round(total_ET, 1), "mm\n")
+cat("Variation de stockage :", round(stockage_final, 1), "mm\n")
+cat("Efficience irrigation :", round(efficience, 1), "%\n")
+
+# Verification du bilan
+verification <- total_irrigation - total_drainage - total_ET - stockage_final
+cat("Erreur bilan (residuel) :", round(verification, 2), "mm\n")</code></pre></details>
+
+<div class="box result">
+  <div class="box-title">Résultat attendu</div>
+  Présenter un graphique de l'évolution temporelle de $\theta$ à trois profondeurs, ainsi qu'un tableau synthétique du bilan hydrique.
+</div>
+
+<h2>Exercice 3 : Comparaison de Scénarios d'Irrigation</h2>
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  Durée estimée : 20 minutes
+</div>
+
+<p>La comparaison de différents schémas d'irrigation permet d'optimiser la gestion de l'eau. Trois scénarios sont simulés :</p>
+
+<h3>Étape 1 : Scénario A — Référence (3 irrigations de 20 mm)</h3>
+<table>
+<thead><tr><th>Jour</th><th>Irrigation (mm)</th><th>Remarque</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>20.0</td><td>Demi-tour 1ᵉʳ</td></tr>
+<tr><td>11</td><td>20.0</td><td>Demi-tour 2</td></tr>
+<tr><td>21</td><td>20.0</td><td>Demi-tour 3</td></tr>
+<tr><td>Autres jours</td><td>0</td><td>Pluie naturelle ou sans irrigation</td></tr>
+</tbody>
+</table>
+<p><strong>Irrigation totale :</strong> $3 \times 20 = 60$ mm</p>
+
+<h3>Étape 2 : Scénario B — Micro-irrigation (6 irrigations de 10 mm)</h3>
+<table>
+<thead><tr><th>Jour</th><th>Irrigation (mm)</th><th>Remarque</th></tr></thead>
+<tbody>
+<tr><td>1, 6, 11, 16, 21, 26</td><td>10.0</td><td>Tous les 5 jours</td></tr>
+<tr><td>Autres jours</td><td>0</td><td>Sans irrigation</td></tr>
+</tbody>
+</table>
+<p><strong>Irrigation totale :</strong> $6 \times 10 = 60$ mm</p>
+
+<h3>Étape 3 : Scénario C — Irrigation Quotidienne (2 mm/j)</h3>
+<table>
+<thead><tr><th>Jour</th><th>Irrigation (mm)</th></tr></thead>
+<tbody>
+<tr><td>1–30</td><td>2.0 (chaque jour)</td></tr>
+</tbody>
+</table>
+<p><strong>Irrigation totale :</strong> $30 \times 2 = 60$ mm</p>
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  Les trois scénarios apportent la même quantité d'eau totale (60 mm) mais avec des fréquences différentes. Cela teste l'impact de la stratégie d'irrigation sur l'efficience et le stress hydrique.
+</div>
+
+<h3>Étape 4 : Analyse Comparative avec R</h3>
+<p>Une fois les trois simulations terminées (fichiers stockés dans des répertoires <code>Scenario_A</code>, <code>Scenario_B</code>, <code>Scenario_C</code>), créez un script R pour comparer les résultats :</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Chemins des fichiers de sortie
+scenarios <- list(
+  A = "Scenario_A/PROFILE.OUT",
+  B = "Scenario_B/PROFILE.OUT",
+  C = "Scenario_C/PROFILE.OUT"
+)
+
+# Fonction pour lire et resumer les donnees
+resume_scenario <- function(profile_file) {
+  profile <- read_hydrus_profile(profile_file)
+
+  # Extraire la teneur en eau a z=30 cm a tous les temps
+  z_ref <- 30
+  indices <- which(abs(profile$Profondeur_cm - z_ref) < 0.5)
+
+  data_z30 <- profile[indices, ]
+  return(data_z30)
+}
+
+# Charger donnees pour tous les scenarios
+data_A <- resume_scenario(scenarios$A)
+data_B <- resume_scenario(scenarios$B)
+data_C <- resume_scenario(scenarios$C)
+
+# Graphique superpose
+png("comparaison_scenarios.png", width=900, height=600)
+plot(data_A$Temps, data_A$Teneur_eau, type="o",
+     col="blue", lwd=2,
+     xlab="Temps (jours)", ylab="Teneur en eau a 30 cm (cm3/cm3)",
+     main="Comparaison des trois scenarios d'irrigation",
+     ylim=c(0.10, 0.45))
+
+lines(data_B$Temps, data_B$Teneur_eau, type="o",
+      col="green", lwd=2)
+lines(data_C$Temps, data_C$Teneur_eau, type="o",
+      col="red", lwd=2)
+
+legend("bottomright",
+       c("A : 3x20mm", "B : 6x10mm", "C : 30x2mm"),
+       col=c("blue", "green", "red"), lwd=2)
+grid()
+dev.off()
+
+cat("Graphique sauve : comparaison_scenarios.png\n")</code></pre></details>
+
+<h3>Étape 5 : Tableau Comparatif</h3>
+<p>Construire un tableau récapitulatif avec les métriques clés pour chaque scénario :</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Fonction pour extraire bilan hydrique d'un scenario
+extraire_bilan <- function(t_level_file) {
+  t_level <- read.table(t_level_file, header=TRUE, skip=2)
+
+  total_irrig <- sum(t_level$FluxTop[t_level$FluxTop > 0], na.rm=TRUE)
+  total_drain <- abs(sum(t_level$FluxBot[t_level$FluxBot < 0], na.rm=TRUE))
+  total_ET <- sum(t_level$Transpiration + t_level$Evaporation, na.rm=TRUE)
+
+  efficience <- total_ET / total_irrig * 100
+
+  return(data.frame(
+    Irrigation_mm = round(total_irrig, 1),
+    Drainage_mm = round(total_drain, 1),
+    ET_mm = round(total_ET, 1),
+    Efficience_pct = round(efficience, 1)
+  ))
+}
+
+# Bilans pour les 3 scenarios
+bilan_A <- extraire_bilan("Scenario_A/T_LEVEL.OUT")
+bilan_B <- extraire_bilan("Scenario_B/T_LEVEL.OUT")
+bilan_C <- extraire_bilan("Scenario_C/T_LEVEL.OUT")
+
+# Tableau comparatif
+tableau <- rbind(
+  data.frame(Scenario = "A (3x20mm)", bilan_A),
+  data.frame(Scenario = "B (6x10mm)", bilan_B),
+  data.frame(Scenario = "C (30x2mm)", bilan_C)
+)
+
+print(tableau)
+
+# Exporter en CSV
+write.csv(tableau, "comparaison_bilans.csv", row.names=FALSE)</code></pre></details>
+
+<div class="box warn">
+  <div class="box-title">Attention</div>
+  Vérifiez que les fichiers T_LEVEL.OUT de chaque scénario contiennent les bonnes colonnes. Selon votre version de HYDRUS et vos paramètres de sortie, les noms de colonnes peuvent varier (par ex. <code>RootUp</code>, <code>EvapSur</code>, <code>Q</code>, etc.).
+</div>
+
+<h3>Étape 6 : Questions d'Analyse</h3>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  <ol>
+    <li>Quel scénario présente la meilleure efficience d'irrigation ? Pourquoi ?</li>
+    <li>Quel scénario minimise le drainage (perte d'eau vers la nappe) ? Quel est l'intérêt environnemental ?</li>
+    <li>Comparer la variabilité de la teneur en eau à z=30 cm pour les trois scénarios. Laquelle est plus stable ?</li>
+    <li>Sur terrain fortement penté, quel scénario serait le plus adapté ? (Conseil : penser à l'infiltration et au ruissellement)</li>
+    <li>Estimer le coût de chaque scénario en termes d'eau utilisée et en proposer un classement économique.</li>
+  </ol>
+</div>
+
+<div class="box result">
+  <div class="box-title">Résultat attendu</div>
+  Présenter :
+  <ol>
+    <li>Un graphique de superposition des profils ou des évolutions temporelles des trois scénarios</li>
+    <li>Un tableau avec drainage, ET, efficience pour chaque scénario</li>
+    <li>Une conclusion sur le scénario le plus adapté aux conditions locales du Gharb</li>
+  </ol>
+</div>
+
+<div class="nav">
+  <a href="TP05_Irrigation_Localisee.html">← TP 5</a>
+  <a href="index.html">Accueil</a>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body>
+</html>

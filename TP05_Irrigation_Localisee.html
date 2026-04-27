@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>TP Jour 5 — Irrigation localisée et micro-irrigation</title>
+<script>MathJax = {tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+<style>
+:root { --bleuF:#1a5276; --bleuM:#2980b9; --bleuL:#d6eaf8; --vertF:#1e8449; --vertL:#d5f5e3; --orangeF:#e67e22; --orangeL:#fdebd0; --grisL:#f2f3f4; --violetF:#6c3483; }
+* { box-sizing: border-box; }
+body { font-family: Georgia, "Times New Roman", serif; max-width: 900px; margin: 2em auto; padding: 0 1.5em; line-height: 1.6; color: #222; background: #fafafa; }
+header { border-bottom: 3px solid var(--bleuF); padding-bottom: 1em; margin-bottom: 2em; }
+header h1 { color: var(--bleuF); margin-bottom: 0.2em; }
+header .sub { color: #555; font-style: italic; }
+header .auth { color: #888; font-size: 0.9em; margin-top: 0.5em; }
+h2 { color: var(--bleuF); border-bottom: 2px solid var(--bleuM); padding-bottom: 0.3em; margin-top: 2em; }
+h3 { color: var(--vertF); margin-top: 1.5em; }
+.box { border: 2px solid; border-radius: 6px; padding: 0.8em 1em; margin: 1.2em 0; }
+.box .box-title { font-weight: bold; font-size: 1.05em; margin: -0.8em -1em 0.6em -1em; padding: 0.5em 1em; border-bottom: 1px solid; }
+.obj { border-color: var(--bleuM); background: var(--bleuL); }
+.obj .box-title { background: var(--bleuF); color: white; border-color: var(--bleuM); }
+.note { border-color: var(--bleuM); background: var(--bleuL); }
+.note .box-title { color: var(--bleuF); border-color: var(--bleuM); }
+.warn { border-color: var(--orangeF); background: var(--orangeL); }
+.warn .box-title { color: var(--orangeF); border-color: var(--orangeF); }
+.quest { border-color: var(--violetF); background: white; }
+.quest .box-title { color: var(--violetF); border-color: var(--violetF); }
+.result { border-color: var(--vertF); background: var(--vertL); }
+.result .box-title { color: var(--vertF); border-color: var(--vertF); }
+details.code { margin: 1em 0; background: var(--grisL); border: 1px solid #bbb; border-radius: 6px; overflow: hidden; }
+details.code summary { cursor: pointer; padding: 0.5em 1em; background: var(--bleuF); color: white; font-family: sans-serif; font-size: 0.9em; font-weight: bold; user-select: none; list-style: none; }
+details.code summary::before { content: "▶ "; display: inline-block; transition: transform 0.2s; }
+details.code[open] summary::before { transform: rotate(90deg); }
+details.code summary:hover { background: var(--bleuM); }
+details.code pre { margin: 0; padding: 1em; overflow-x: auto; background: var(--grisL); font-size: 0.85em; font-family: Consolas, Monaco, monospace; }
+table { border-collapse: collapse; margin: 1em auto; font-size: 0.95em; }
+table caption { font-style: italic; margin-bottom: 0.5em; color: #555; }
+th, td { padding: 0.4em 0.8em; border: 1px solid #ccc; }
+th { background: var(--bleuL); color: var(--bleuF); }
+tr:nth-child(even) td { background: #f8f9fa; }
+.controls { position: sticky; top: 0; z-index: 100; background: white; padding: 0.5em; margin-bottom: 1em; border-bottom: 1px solid #ddd; text-align: right; font-family: sans-serif; font-size: 0.85em; }
+.controls button { background: var(--bleuF); color: white; border: none; padding: 0.4em 0.9em; border-radius: 4px; cursor: pointer; margin-left: 0.5em; }
+.controls button:hover { background: var(--bleuM); }
+.nav { text-align: center; margin: 2em 0; font-family: sans-serif; }
+.nav a { color: var(--bleuF); text-decoration: none; padding: 0.3em 0.8em; border: 1px solid var(--bleuM); border-radius: 4px; margin: 0 0.2em; display: inline-block; }
+.nav a:hover { background: var(--bleuL); }
+ul, ol { padding-left: 1.5em; } ul li, ol li { margin-bottom: 0.3em; }
+@media print { .controls, .nav { display: none; } details.code { page-break-inside: avoid; } details.code[open] pre { max-height: none; } }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <span>Code R : </span>
+  <button onclick="document.querySelectorAll('details.code').forEach(d=>d.open=true)">Tout afficher</button>
+  <button onclick="document.querySelectorAll('details.code').forEach(d=>d.open=false)">Tout masquer</button>
+</div>
+
+<header>
+  <h1>TP Jour 5 — Étude de l'Irrigation Localisée et Micro-irrigation</h1>
+  <div class="sub">Dimensionnement hydraulique d'un réseau de goutte-à-goutte</div>
+  <div class="auth">Prof. Silvio José Gumiere</div>
+</header>
+
+<div class="box obj">
+  <div class="box-title">Objectifs du TP</div>
+  <ul>
+    <li>Dimensionner une rampe de goutteurs avec R</li>
+    <li>Calculer les pertes de charge avec Darcy-Weisbach et le facteur de Christiansen</li>
+    <li>Vérifier l'uniformité de distribution (CU et EU)</li>
+    <li>Dimensionner le réseau complet (porte-rampe et conduite principale)</li>
+  </ul>
+</div>
+
+<h2>Exercice 1 : Caractéristique du Goutteur</h2>
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  Durée estimée : 15 minutes
+</div>
+
+<h3>Étape 1 : Relation Débit-Pression</h3>
+<p>La caractéristique hydraulique d'un goutteur est décrite par une relation de puissance :</p>
+$$q = K \cdot H^x$$
+<p>où $q$ est le débit (L/h), $H$ est la pression (bar), $K$ est le coefficient de calibrage et $x$ est l'exposant (exposant de stabilité).</p>
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  <strong>Types de goutteurs :</strong>
+  <ul>
+    <li><strong>Goutteur turbulent</strong> : $x \approx 0.5$ (sensible aux variations de pression)</li>
+    <li><strong>Goutteur autorégulant</strong> : $x \approx 0.1$ (peu sensible aux variations de pression)</li>
+  </ul>
+</div>
+
+<p>Pour ce TP, vous utiliserez deux configurations :</p>
+<p><strong>Configuration A (goutteur autorégulant)</strong> : $x = 0.1$, $K = 3.8$, pression nominale $1.0$ bar, plage de fonctionnement $0.5$ à $2.5$ bar.</p>
+<p><strong>Configuration B (goutteur turbulent)</strong> : $x = 0.5$, $K = 1.0$, plage de fonctionnement $0.5$ à $2.5$ bar.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Caracteristique des goutteurs
+H <- seq(0.5, 2.5, by=0.1)  # Pression (bar)
+
+# Configuration A : autoregulant
+K_A <- 3.8
+x_A <- 0.1
+q_A <- K_A * H^x_A
+
+# Configuration B : turbulent
+K_B <- 1.0
+x_B <- 0.5
+q_B <- K_B * H^x_B
+
+# Graphique
+png("goutteurs.png", width=800, height=600)
+plot(H, q_A, type="o", col="darkgreen", lwd=2,
+     xlab="Pression H (bar)", ylab="Debit q (L/h)",
+     main="Caracteristique des goutteurs", ylim=c(0, 5))
+lines(H, q_B, type="o", col="darkorange", lwd=2)
+legend("topright", c("Autoregulant (x=0.1)", "Turbulent (x=0.5)"),
+       col=c("darkgreen", "darkorange"), lwd=2)
+grid()
+dev.off()
+
+cat("Debit nominal A (1.0 bar) :",
+    K_A * 1.0^x_A, "L/h\n")
+cat("Debit nominal B (1.0 bar) :",
+    K_B * 1.0^x_B, "L/h\n")</code></pre></details>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  Pourquoi un goutteur autorégulant est-il préférable dans les systèmes d'irrigation sur terrain en pente ?
+</div>
+
+<h2>Exercice 2 : Dimensionnement de la Rampe</h2>
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  Durée estimée : 25 minutes
+</div>
+
+<h3>Étape 1 : Configuration de la Parcelle</h3>
+<p>Vous disposez des données suivantes pour une parcelle d'olivier dans la région Souss-Massa :</p>
+
+<table>
+<thead><tr><th>Paramètre</th><th>Valeur</th></tr></thead>
+<tbody>
+<tr><td>Espacement des arbres</td><td>6 m × 6 m</td></tr>
+<tr><td>Nombre de goutteurs par arbre</td><td>4</td></tr>
+<tr><td>Débit nominal par goutteur</td><td>4 L/h</td></tr>
+<tr><td>Espacement des goutteurs sur rampe</td><td>1.5 m</td></tr>
+<tr><td>Type de tuyau rampe</td><td>PE 16 mm (Di = 13.6 mm)</td></tr>
+<tr><td>Longueur de rampe</td><td>60 m (10 arbres)</td></tr>
+</tbody>
+</table>
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  Le débit total de la rampe est : $Q_{rampe} = 10 \text{ arbres} \times 4 \text{ goutteurs} \times 4 \text{ L/h} = 160 \text{ L/h}$
+</div>
+
+<h3>Étape 2 : Calcul des Pertes de Charge Darcy-Weisbach</h3>
+<p>Les pertes de charge linéaires sont données par la formule de Darcy-Weisbach :</p>
+$$J = f \cdot \frac{L}{D} \cdot \frac{V^2}{2g}$$
+
+<p>Pour les écoulements turbulents en tuyau lisse (Blasius) :</p>
+$$f = \frac{0.316}{Re^{0.25}}$$
+
+<p>Pour les rampes avec sorties multiples, la perte de charge équivalente est corrigée par le facteur de Christiansen :</p>
+$$\Delta H_{rampe} = F \cdot \Delta H_{lin}, \quad F = \frac{1}{1+m} + \frac{1}{2N} + \sqrt{\frac{m-1}{6N^2}}$$
+
+<p>avec $m = 1.75$ (coefficient empirique) et $N$ le nombre de goutteurs.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Parametres du systeme
+Q_rampe <- 160 / 3600 / 1000  # m3/s
+D_rampe <- 13.6 / 1000        # m
+L_rampe <- 60                 # m
+n_goutteurs <- 40
+rho <- 1000                   # kg/m3
+g <- 9.81                     # m/s2
+mu <- 1e-3                    # Pa.s
+
+# Vitesse et nombre de Reynolds
+A_rampe <- pi * (D_rampe/2)^2
+V_rampe <- Q_rampe / A_rampe
+Re <- rho * V_rampe * D_rampe / mu
+
+# Coefficient de friction (Blasius)
+f <- 0.316 / Re^0.25
+
+# Perte de charge lineaire Darcy-Weisbach
+J <- f * (L_rampe / D_rampe) * (V_rampe^2 / (2*g))
+
+# Facteur de Christiansen
+m <- 1.75
+F_chris <- 1/(1+m) + 1/(2*n_goutteurs) +
+           sqrt((m-1)/(6*n_goutteurs^2))
+
+# Perte de charge rampe
+DH_rampe <- F_chris * J
+
+cat("Nombre de Reynolds :", round(Re, 0), "\n")
+cat("Coefficient de friction f :", round(f, 4), "\n")
+cat("Perte de charge lineaire J :", round(J, 3), "m\n")
+cat("Facteur de Christiansen F :", round(F_chris, 4), "\n")
+cat("Perte de charge totale rampe :", round(DH_rampe, 3), "m\n")
+cat("Perte de charge totale rampe :", round(DH_rampe*10.197, 3), "kPa\n")</code></pre></details>
+
+<h3>Étape 3 : Variation de Pression le Long de la Rampe</h3>
+<p>La pression varie le long de la rampe en raison des pertes de charge. Si $H_0$ est la pression à l'entrée, la pression au point $i$ est : $H_i = H_0 - \Delta H_{0 \to i}$</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Profil de pression le long de la rampe
+n_sections <- 10
+H0 <- 1.5         # pression entree (bar)
+
+# Position des goutteurs
+positions <- seq(1.5, 60, by=6)
+
+# Perte de charge par section
+DH_per_section <- DH_rampe / n_sections
+
+# Pression a chaque goutteur
+H_goutteurs <- numeric(n_sections)
+debit_goutteurs <- numeric(n_sections)
+
+for(i in 1:n_sections) {
+  H_bar <- H0 - i * DH_per_section
+  H_goutteurs[i] <- H_bar * 10.197
+
+  # Debit du goutteur (autoregulant) - 4 goutteurs/arbre
+  debit_goutteurs[i] <- 4 * (H_bar/1.0)^0.1 * 4
+}
+
+# Graphique du profil de pression
+png("profil_pression.png", width=800, height=600)
+plot(positions, H_goutteurs, type="o", col="darkblue", lwd=2,
+     xlab="Distance le long de la rampe (m)",
+     ylab="Pression (kPa)",
+     main="Profil de pression le long de la rampe")
+abline(h=H0*10.197, col="green", lty=2)
+grid()
+dev.off()
+
+cat("Pression entree :", H0, "bar\n")
+cat("Pression a l'extremite :",
+    H_goutteurs[n_sections], "kPa\n")
+cat("Variation de pression relative :",
+    round(100*(H0*10.197 - H_goutteurs[n_sections])/
+    (H0*10.197), 1), "%\n")</code></pre></details>
+
+<h3>Étape 4 : Vérification de l'Uniformité</h3>
+<p>L'uniformité de distribution est évaluée par deux critères :</p>
+$$CU = 100 \times \left(1 - \frac{\sum_{i=1}^{n} |q_i - q_{moy}|}{n \cdot q_{moy}}\right)$$
+$$EU = 100 \times \frac{q_{min}}{q_{moy}}$$
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  <strong>Critères d'acceptabilité (norme FAO) :</strong>
+  <ul>
+    <li>CU $> 90\%$ : Bonne uniformité</li>
+    <li>CU $75\%$–$90\%$ : Acceptable</li>
+    <li>CU $< 75\%$ : Non acceptable</li>
+  </ul>
+</div>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Calcul de l'uniformite
+q_moy <- mean(debit_goutteurs)
+q_min <- min(debit_goutteurs)
+
+# Coefficient d'uniformite (CU)
+CU <- 100 * (1 - sum(abs(debit_goutteurs - q_moy)) /
+             (length(debit_goutteurs) * q_moy))
+
+# Efficience d'uniformite (EU)
+EU <- 100 * q_min / q_moy
+
+cat("Debit moyen :", round(q_moy, 2), "L/h\n")
+cat("Debit minimum :", round(q_min, 2), "L/h\n")
+cat("Debit maximum :", round(max(debit_goutteurs), 2), "L/h\n")
+cat("Coefficient d'uniformite (CU) :", round(CU, 1), "%\n")
+cat("Efficience d'uniformite (EU) :", round(EU, 1), "%\n")
+
+# Diagnostic
+if(CU > 90) {
+  cat("=> Bonne uniformite\n")
+} else if(CU > 75) {
+  cat("=> Uniformite acceptable\n")
+} else {
+  cat("=> Uniformite NON acceptable\n")
+}</code></pre></details>
+
+<div class="box result">
+  <div class="box-title">Résultat attendu</div>
+  Calculez :
+  <ul>
+    <li>La variation de pression le long de la rampe (tableau et graphique)</li>
+    <li>Les débits de chaque goutteur</li>
+    <li>Le coefficient CU et l'efficience EU</li>
+    <li>Concluez sur l'acceptabilité de la rampe dimensionnée</li>
+  </ul>
+</div>
+
+<h2>Exercice 3 : Réseau Complet</h2>
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  Durée estimée : 20 minutes
+</div>
+
+<h3>Étape 1 : Dimensionnement du Porte-Rampe</h3>
+<p>Dans une plantation, plusieurs rampes sont alimentées par un porte-rampe (collecteur). Pour cette application :</p>
+
+<table>
+<thead><tr><th>Paramètre</th><th>Valeur</th></tr></thead>
+<tbody>
+<tr><td>Nombre de rampes</td><td>8</td></tr>
+<tr><td>Débit par rampe</td><td>160 L/h</td></tr>
+<tr><td>Débit total porte-rampe</td><td>1280 L/h</td></tr>
+<tr><td>Type de tuyau</td><td>PE 32 mm</td></tr>
+<tr><td>Longueur porte-rampe</td><td>240 m</td></tr>
+</tbody>
+</table>
+
+<p>Utilisez la méthode de Hazen-Williams pour cette conduite plus grande. Le coefficient $C$ pour PE est typiquement 150 :</p>
+$$J = \left(\frac{Q}{0.2785 \cdot C \cdot D^{2.63}}\right)^{1.852}$$
+<p>où $J$ est en m/100m, $Q$ en m$^3$/s et $D$ en m.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Porte-rampe
+Q_porte <- (1280 / 3600 / 1000)  # m3/s
+D_porte <- 32 / 1000             # m
+L_porte <- 240                   # m
+C_HW <- 150
+
+# Formule Hazen-Williams
+J_HW <- (Q_porte / (0.2785 * C_HW * D_porte^2.63))^1.852
+DH_porte <- J_HW * L_porte / 100
+
+cat("Perte de charge porte-rampe :", round(DH_porte, 2), "m\n")
+cat("Perte de charge porte-rampe :", round(DH_porte*9.81, 2), "kPa\n")</code></pre></details>
+
+<h3>Étape 2 : Dimensionnement de la Conduite Principale</h3>
+<p>La conduite principale amène l'eau de la pompe au premier répartiteur. Étudiez plusieurs diamètres (63, 75, 90, 110 mm) et choisissez en fonction de la vitesse acceptable (0.6–1.5 m/s).</p>
+
+<table>
+<thead><tr><th>Paramètre</th><th>Valeur</th></tr></thead>
+<tbody>
+<tr><td>Débit total</td><td>10240 L/h</td></tr>
+<tr><td>Matériau tuyau</td><td>PVC</td></tr>
+<tr><td>Coefficient Hazen-Williams</td><td>150</td></tr>
+<tr><td>Longueur</td><td>500 m</td></tr>
+</tbody>
+</table>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Conduite principale - comparaison de diametres
+Q_principal <- 10240 / 3600 / 1000  # m3/s
+L_principal <- 500
+C_HW <- 150
+diametres <- c(63, 75, 90, 110) / 1000
+
+resultats <- data.frame(
+  Diametre_mm = c(63, 75, 90, 110),
+  Vitesse_ms = numeric(4),
+  PerteMH = numeric(4),
+  PertekPa = numeric(4)
+)
+
+for(i in seq_along(diametres)) {
+  D <- diametres[i]
+  A <- pi * (D/2)^2
+  v <- Q_principal / A
+  J_HW <- (Q_principal / (0.2785 * C_HW * D^2.63))^1.852
+  DH <- J_HW * L_principal / 100
+
+  resultats$Vitesse_ms[i] <- round(v, 3)
+  resultats$PerteMH[i] <- round(DH, 2)
+  resultats$PertekPa[i] <- round(DH * 9.81, 1)
+}
+
+print(resultats)
+
+# Choix : vitesse entre 0.6 et 1.5 m/s
+indice_choix <- which(resultats$Vitesse_ms >= 0.6 &
+                      resultats$Vitesse_ms <= 1.5)
+cat("Diametres acceptables : ",
+    resultats$Diametre_mm[indice_choix], "mm\n")</code></pre></details>
+
+<h3>Étape 3 : Synthèse et Bilan de la Pompe</h3>
+<p>La hauteur manométrique totale (HMT) requise par la pompe est :</p>
+$$HMT = H_g + \Delta H_{total} + H_{goutteur}$$
+
+<p>où $H_g$ : hauteur géométrique (différence d'élévation), $\Delta H_{total}$ : somme des pertes de charge, $H_{goutteur}$ : pression de fonctionnement du goutteur (typiquement 1.0–1.5 bar).</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Bilan de la pompe
+Hg <- 15          # hauteur geometrique (m)
+H_goutteur <- 1.5 # pression en bar
+H_goutteur_m <- H_goutteur * 10.197
+
+# Pertes de charge totales
+DH_total <- DH_rampe + DH_porte + DH_porte
+
+# Diametre retenu pour principale
+D_retenu <- 90  # mm
+HMT <- Hg + DH_total + H_goutteur_m
+
+# Puissance de la pompe
+eta_pompe <- 0.75
+g <- 9.81
+rho <- 1000
+Q_m3s <- Q_principal
+P_hydraulique <- rho * g * Q_m3s * HMT
+P_moteur <- P_hydraulique / eta_pompe
+
+cat("\n=== SYNTHESE DU DIMENSIONNEMENT ===\n\n")
+cat("Hauteur geometrique :", Hg, "m\n")
+cat("Hauteur manometrique totale (HMT) :", round(HMT, 1), "m\n")
+cat("Puissance hydraulique :", round(P_hydraulique/1000, 2), "kW\n")
+cat("Puissance moteur (eta=75%) :", round(P_moteur/1000, 2), "kW\n")</code></pre></details>
+
+<div class="box warn">
+  <div class="box-title">Attention</div>
+  Créez un tableau récapitulatif avec les colonnes :
+  <ul>
+    <li>Composant</li>
+    <li>Diamètre (mm)</li>
+    <li>Débit (L/h)</li>
+    <li>Perte de charge (m)</li>
+    <li>Perte de charge (kPa)</li>
+  </ul>
+  Incluez tous les éléments du réseau (rampe, porte-rampe, conduite principale).
+</div>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  Quel est le poste le plus coûteux du système ? (Conseil : recherchez les prix unitaires pour les matériaux et composants au Maroc)
+</div>
+
+<div class="nav">
+  <a href="TP04_Interpolation_Spatiale.html">← TP 4</a>
+  <a href="index.html">Accueil</a>
+  <a href="TP06_Modelisation_HYDRUS.html">TP 6 →</a>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body>
+</html>

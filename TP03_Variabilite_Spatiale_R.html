@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>TP Jour 3 — Variabilité spatiale avec R</title>
+<script>MathJax = {tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+<style>
+:root { --bleuF:#1a5276; --bleuM:#2980b9; --bleuL:#d6eaf8; --vertF:#1e8449; --vertL:#d5f5e3; --orangeF:#e67e22; --orangeL:#fdebd0; --grisL:#f2f3f4; --violetF:#6c3483; }
+* { box-sizing: border-box; }
+body { font-family: Georgia, "Times New Roman", serif; max-width: 900px; margin: 2em auto; padding: 0 1.5em; line-height: 1.6; color: #222; background: #fafafa; }
+header { border-bottom: 3px solid var(--bleuF); padding-bottom: 1em; margin-bottom: 2em; }
+header h1 { color: var(--bleuF); margin-bottom: 0.2em; }
+header .sub { color: #555; font-style: italic; }
+header .auth { color: #888; font-size: 0.9em; margin-top: 0.5em; }
+h2 { color: var(--bleuF); border-bottom: 2px solid var(--bleuM); padding-bottom: 0.3em; margin-top: 2em; }
+h3 { color: var(--vertF); margin-top: 1.5em; }
+.box { border: 2px solid; border-radius: 6px; padding: 0.8em 1em; margin: 1.2em 0; }
+.box .box-title { font-weight: bold; font-size: 1.05em; margin: -0.8em -1em 0.6em -1em; padding: 0.5em 1em; border-bottom: 1px solid; }
+.obj { border-color: var(--bleuM); background: var(--bleuL); }
+.obj .box-title { background: var(--bleuF); color: white; border-color: var(--bleuM); }
+.note { border-color: var(--bleuM); background: var(--bleuL); }
+.note .box-title { color: var(--bleuF); border-color: var(--bleuM); }
+.warn { border-color: var(--orangeF); background: var(--orangeL); }
+.warn .box-title { color: var(--orangeF); border-color: var(--orangeF); }
+.quest { border-color: var(--violetF); background: white; }
+.quest .box-title { color: var(--violetF); border-color: var(--violetF); }
+.result { border-color: var(--vertF); background: var(--vertL); }
+.result .box-title { color: var(--vertF); border-color: var(--vertF); }
+details.code { margin: 1em 0; background: var(--grisL); border: 1px solid #bbb; border-radius: 6px; overflow: hidden; }
+details.code summary { cursor: pointer; padding: 0.5em 1em; background: var(--bleuF); color: white; font-family: sans-serif; font-size: 0.9em; font-weight: bold; user-select: none; list-style: none; }
+details.code summary::before { content: "▶ "; display: inline-block; transition: transform 0.2s; }
+details.code[open] summary::before { transform: rotate(90deg); }
+details.code summary:hover { background: var(--bleuM); }
+details.code pre { margin: 0; padding: 1em; overflow-x: auto; background: var(--grisL); font-size: 0.85em; font-family: Consolas, Monaco, monospace; }
+table { border-collapse: collapse; margin: 1em auto; font-size: 0.95em; }
+table caption { font-style: italic; margin-bottom: 0.5em; color: #555; }
+th, td { padding: 0.4em 0.8em; border: 1px solid #ccc; }
+th { background: var(--bleuL); color: var(--bleuF); }
+tr:nth-child(even) td { background: #f8f9fa; }
+.controls { position: sticky; top: 0; z-index: 100; background: white; padding: 0.5em; margin-bottom: 1em; border-bottom: 1px solid #ddd; text-align: right; font-family: sans-serif; font-size: 0.85em; }
+.controls button { background: var(--bleuF); color: white; border: none; padding: 0.4em 0.9em; border-radius: 4px; cursor: pointer; margin-left: 0.5em; }
+.controls button:hover { background: var(--bleuM); }
+.nav { text-align: center; margin: 2em 0; font-family: sans-serif; }
+.nav a { color: var(--bleuF); text-decoration: none; padding: 0.3em 0.8em; border: 1px solid var(--bleuM); border-radius: 4px; margin: 0 0.2em; display: inline-block; }
+.nav a:hover { background: var(--bleuL); }
+ul, ol { padding-left: 1.5em; } ul li, ol li { margin-bottom: 0.3em; }
+@media print { .controls, .nav { display: none; } details.code { page-break-inside: avoid; } details.code[open] pre { max-height: none; } }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <span>Code R : </span>
+  <button onclick="document.querySelectorAll('details.code').forEach(d=>d.open=true)">Tout afficher</button>
+  <button onclick="document.querySelectorAll('details.code').forEach(d=>d.open=false)">Tout masquer</button>
+</div>
+
+<header>
+  <h1>TP Jour 3 — Introduction à la variabilité spatiale avec R</h1>
+  <div class="sub">Analyse exploratoire spatiale et variogrammes</div>
+  <div class="auth">Prof. Silvio José Gumiere</div>
+</header>
+
+<div class="box obj">
+  <div class="box-title">Objectifs du TP</div>
+  <ol>
+    <li>Réaliser une analyse exploratoire de données spatiales avec R</li>
+    <li>Calculer et interpréter un variogramme expérimental</li>
+    <li>Ajuster un modèle théorique de variogramme</li>
+  </ol>
+</div>
+
+<p><em>Durée totale : 75 minutes</em></p>
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  Dans ce TP, nous étudions la variabilité spatiale de la conductivité hydraulique (Ks) sur une parcelle de Meknès. Cela nous permettra de comprendre comment les propriétés du sol varient en fonction de l'espace et de préparer les données pour le krigeage (TP 4).
+</div>
+
+<h2>Exercice 1 : Analyse exploratoire de données spatiales</h2>
+<p><strong>Durée : 25 minutes</strong></p>
+
+<h3>Étape 1 : Création d'un jeu de données simulé</h3>
+<p>Nous allons créer 50 points de conductivité hydraulique (Ks en cm/h) sur une parcelle 500 m × 500 m à Meknès, avec une structure d'autocorrélation spatiale réaliste.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Charger les bibliotheques
+library(gstat)
+library(sp)
+library(ggplot2)
+
+# Fixer la graine pour la reproductibilite
+set.seed(42)
+
+# Creer 50 points aleatoires dans le domaine [0, 500] x [0, 500]
+n_points <- 50
+x <- runif(n_points, 0, 500)
+y <- runif(n_points, 0, 500)
+
+# Generer Ks avec autocorrelation spatiale
+g <- gstat(formula=z~1, locations=~x+y, dummy=TRUE, beta=5,
+           model=vgm(psill=1.2, model="Exp", range=100, nugget=0.5),
+           nmax=20)
+ks_values <- predict(g, newdata=data.frame(x=x, y=y), nsim=1)$sim1
+
+# Verifier que Ks > 0
+ks_values <- abs(ks_values) + 2
+
+# Creer un dataframe
+data_ks <- data.frame(x=x, y=y, Ks=ks_values)
+head(data_ks)</code></pre></details>
+
+<div class="box result">
+  <div class="box-title">Résultat attendu</div>
+  Vous devez obtenir un dataframe de 50 lignes avec des colonnes <code>x</code>, <code>y</code> et <code>Ks</code>. Les valeurs de Ks varient typiquement entre 1 et 6 cm/h pour un sol limoneux.
+</div>
+
+<h3>Étape 2 : Statistiques descriptives</h3>
+<p>Calculez les statistiques principales et visualisez la distribution de Ks.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Statistiques descriptives
+summary(data_ks$Ks)
+cat("Moyenne :", mean(data_ks$Ks), "\n")
+cat("Ecart-type :", sd(data_ks$Ks), "\n")
+cat("Coefficient de variation :",
+    100 * sd(data_ks$Ks) / mean(data_ks$Ks), "%\n")
+cat("Min :", min(data_ks$Ks), "\n")
+cat("Max :", max(data_ks$Ks), "\n")
+
+# Bibliotheque pour kurtosis et skewness
+library(moments)
+cat("Skewness :", skewness(data_ks$Ks), "\n")
+cat("Kurtosis :", kurtosis(data_ks$Ks), "\n")
+
+# Visualisation
+par(mfrow=c(1,2))
+hist(data_ks$Ks, main="Distribution de Ks", xlab="Ks (cm/h)",
+     col="lightblue", breaks=10)
+boxplot(data_ks$Ks, main="Boite a moustaches", ylab="Ks (cm/h)")
+par(mfrow=c(1,1))</code></pre></details>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  Quelle est la médiane de Ks ? Y a-t-il des valeurs aberrantes ? Le coefficient de variation indique-t-il une variabilité élevée ?
+</div>
+
+<h3>Étape 3 : Test de normalité</h3>
+<p>La normalité est importante pour certaines approches géostatistiques.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Test de Shapiro-Wilk
+test_norm <- shapiro.test(data_ks$Ks)
+print(test_norm)
+
+# Graphique Q-Q
+qqnorm(data_ks$Ks, main="Graphique Q-Q normal")
+qqline(data_ks$Ks, col=2)
+
+# Si non-normal : transformation logarithmique
+if (test_norm$p.value < 0.05) {
+  cat("La distribution n'est pas normale (p =",
+      round(test_norm$p.value, 4), ")\n")
+  data_ks$logKs <- log(data_ks$Ks)
+  test_norm_log <- shapiro.test(data_ks$logKs)
+  cat("Apres transformation log : p =",
+      round(test_norm_log$p.value, 4), "\n")
+}</code></pre></details>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  La distribution de Ks est-elle normale ? Si non, pourquoi la transformation logarithmique pourrait-elle aider ? Comparez les p-values avant et après transformation.
+</div>
+
+<h3>Étape 4 : Carte de localisation</h3>
+<p>Visualisez la répartition spatiale de Ks avec des symboles proportionnels.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Bubble plot : taille des points proportionnelle a Ks
+plot(data_ks$x, data_ks$y, cex=2*data_ks$Ks/max(data_ks$Ks),
+     pch=21, bg="lightblue", col="blue",
+     main="Localisation spatiale de Ks",
+     xlab="X (m)", ylab="Y (m)")
+
+# Ajouter une legende
+legend("topright",
+       title="Ks (cm/h)",
+       legend=c("Faible", "Moyen", "Eleve"),
+       pt.cex=c(1, 2, 3),
+       pch=21, pt.bg="lightblue")</code></pre></details>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  Observez-vous une tendance spatiale ? Y a-t-il des zones de forte concentration de valeurs élevées ou faibles ? Quelle pourrait en être la cause pedologique ?
+</div>
+
+<h2>Exercice 2 : Variogramme expérimental</h2>
+<p><strong>Durée : 25 minutes</strong></p>
+
+<h3>Étape 1 : Calcul du variogramme</h3>
+<p>Le variogramme expérimental mesure la dissemblance entre des valeurs séparées par une distance $h$ :</p>
+$$\gamma(h) = \frac{1}{2N(h)} \sum_{i=1}^{N(h)} [Z(x_i) - Z(x_i + h)]^2$$
+
+<p>où $N(h)$ est le nombre de paires à distance $h$.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Creer un objet spatial pour gstat
+coordinates(data_ks) <- ~x + y
+
+# Calculer le variogramme experimental
+vg_exp <- variogram(Ks ~ 1, data = data_ks)
+print(vg_exp)
+
+# Affichage graphique
+plot(vg_exp, main="Variogramme experimental de Ks",
+     xlab="Distance (m)", ylab="Semivariance (cm/h)^2")</code></pre></details>
+
+<div class="box result">
+  <div class="box-title">Résultat attendu</div>
+  Le variogramme affiche la semivariance en fonction de la distance. Vous devriez voir une courbe croissante qui se stabilise au-delà d'une certaine distance (la portée).
+</div>
+
+<h3>Étape 2 : Variogramme directionnel et anisotropie</h3>
+<p>Vérifiez si la variabilité dépend de la direction.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Variogrammes directionnels
+vg_dir <- variogram(Ks ~ 1, data = data_ks,
+                    alpha = c(0, 45, 90, 135))
+
+# Affichage des 4 directions
+plot(vg_dir, main="Variogrammes directionnels de Ks",
+     xlab="Distance (m)", ylab="Semivariance")</code></pre></details>
+
+<div class="box warn">
+  <div class="box-title">Attention</div>
+  L'anisotropie géométrique indique que la portée varie selon la direction (ex: plus grande dans la direction NW-SE). L'anisotropie zénitale indique que le palier varie selon la direction.
+</div>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  Y a-t-il de l'anisotropie ? Si oui, dans quelle direction ? Quelles pourraient être les raisons géologiques ou pédologiques (pentes, sens du labour, etc.) ?
+</div>
+
+<h3>Étape 3 : Identification visuelle des paramètres</h3>
+<p>Identifiez les trois paramètres clés du variogramme.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Affichage avec annotations
+plot(vg_exp, main="Parametres du variogramme",
+     xlab="Distance (m)", ylab="Semivariance (cm/h)^2")
+
+# Pepite (nugget)
+nugget <- vg_exp$gamma[1]
+cat("Pepite estimee :", nugget, "\n")
+
+# Palier (sill)
+sill_est <- max(vg_exp$gamma)
+cat("Palier estime :", sill_est, "\n")
+
+# Portee (range)
+range_est <- vg_exp$dist[which(vg_exp$gamma >= 0.95 * sill_est)[1]]
+cat("Portee estimee :", range_est, "m\n")
+
+# Ajouter des lignes de reference
+abline(h = sill_est, col = "red", lty = 2, lwd = 2)
+abline(v = range_est, col = "blue", lty = 2, lwd = 2)</code></pre></details>
+
+<div class="box note">
+  <div class="box-title">Note</div>
+  La pépite représente la variabilité à petite échelle et les erreurs de mesure. Le palier est la variance totale du processus. La portée est la distance au-delà de laquelle il n'y a plus de corrélation.
+</div>
+
+<h2>Exercice 3 : Ajustement d'un modèle de variogramme</h2>
+<p><strong>Durée : 25 minutes</strong></p>
+
+<h3>Étape 1 : Modèle sphérique</h3>
+<p>Ajustez un variogramme théorique de type sphérique aux données expérimentales.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Definir un modele spherique initial
+vgm_sph_init <- vgm(psill = sill_est, model = "Sph",
+                      range = range_est, nugget = nugget)
+
+# Ajuster le modele
+vgm_sph <- fit.variogram(vg_exp, vgm_sph_init)
+print(vgm_sph)
+
+# Affichage
+plot(vg_exp, model = vgm_sph,
+     main = "Variogramme experimental et modele spherique")</code></pre></details>
+
+<div class="box result">
+  <div class="box-title">Résultat attendu</div>
+  Les paramètres du modèle sphérique ajusté doivent être affichés. Notez la structure : pépite, puis le composant sphérique avec psill et range.
+</div>
+
+<h3>Étape 2 : Modèle exponentiel</h3>
+<p>Comparez avec un modèle exponentiel.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Definir un modele exponentiel initial
+vgm_exp_init <- vgm(psill = sill_est, model = "Exp",
+                      range = range_est, nugget = nugget)
+
+# Ajuster le modele
+vgm_exp <- fit.variogram(vg_exp, vgm_exp_init)
+print(vgm_exp)
+
+# Affichage
+plot(vg_exp, model = vgm_exp,
+     main = "Variogramme experimental et modele exponentiel")</code></pre></details>
+
+<h3>Étape 3 : Comparaison des modèles</h3>
+<p>Évaluez la qualité de l'ajustement pour chaque modèle.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Fonction pour calculer SSE
+sse <- function(vg_exp, vgm_fit) {
+  vg_pred <- variogramLine(vgm_fit, dist_vector = vg_exp$dist)
+  sum((vg_exp$gamma - vg_pred$gamma)^2)
+}
+
+# Calculer SSE pour chaque modele
+sse_sph <- sse(vg_exp, vgm_sph)
+sse_exp <- sse(vg_exp, vgm_exp)
+
+cat("SSE modele spherique :", round(sse_sph, 4), "\n")
+cat("SSE modele exponentiel :", round(sse_exp, 4), "\n")
+
+# Affichage compare
+plot(vg_exp, model = vgm_sph,
+     main = "Comparaison des modeles",
+     col = "black", pch = 20)
+lines(variogramLine(vgm_sph, maxdist = max(vg_exp$dist),
+                     n = 100), col = "blue", lwd = 2)
+lines(variogramLine(vgm_exp, maxdist = max(vg_exp$dist),
+                     n = 100), col = "red", lwd = 2)
+legend("bottomright", c("Experimental", "Spherique", "Exponentiel"),
+       pch = c(20, NA, NA), lty = c(NA, 1, 1),
+       col = c("black", "blue", "red"))</code></pre></details>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  Quel modèle (sphérique ou exponentiel) offre le meilleur ajustement ? Justifiez votre réponse en vous appuyant sur la SSE. Quelles sont les différences importantes entre ces deux modèles ?
+</div>
+
+<h3>Étape 4 : Validation croisée leave-one-out</h3>
+<p>Vérifiez la fiabilité du modèle ajusté.</p>
+
+<details class="code"><summary>Afficher le code R</summary><pre><code class="language-r"># Validation croisee pour le modele spherique
+cv_sph <- krige.cv(Ks ~ 1, data = data_ks, model = vgm_sph,
+                    nfold = nrow(data_ks))
+
+# Statistiques de validation
+rmse_sph <- sqrt(mean((cv_sph$residual)^2))
+me_sph <- mean(cv_sph$residual)
+corr_sph <- cor(cv_sph$observed, cv_sph$var1.pred)
+
+cat("Modele spherique :\n")
+cat("  RMSE :", round(rmse_sph, 4), "\n")
+cat("  ME :", round(me_sph, 4), "\n")
+cat("  Correlation :", round(corr_sph, 4), "\n")
+
+# Visualisation des residus
+par(mfrow = c(1, 2))
+plot(cv_sph$observed, cv_sph$var1.pred,
+     main = "Observe vs Predit",
+     xlab = "Ks observee", ylab = "Ks predite")
+abline(0, 1, col = "red", lwd = 2)
+hist(cv_sph$residual,
+     main = "Distribution des residus",
+     xlab = "Residus (cm/h)")
+par(mfrow = c(1, 1))</code></pre></details>
+
+<div class="box warn">
+  <div class="box-title">Attention</div>
+  Une validation croisée avec RMSE proche de 0, ME proche de 0 et corrélation proche de 1 indique un modèle fiable. Des déviations importantes signalent des biais ou une mauvaise spécification du modèle.
+</div>
+
+<div class="box quest">
+  <div class="box-title">Question</div>
+  Le modèle sphérique est-il fiable pour prédire Ks ? Observez-vous des résidus systématiques ? Que pourriez-vous faire pour améliorer le modèle ?
+</div>
+
+<div class="nav">
+  <a href="TP02_Mouvement_Eau_Sol.html">← TP 2</a>
+  <a href="index.html">Accueil</a>
+  <a href="TP04_Interpolation_Spatiale.html">TP 4 →</a>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body>
+</html>
